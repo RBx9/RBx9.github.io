@@ -1,0 +1,40 @@
+name: Verify live Sileo source
+
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check public Sileo source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in Release Packages Packages.gz debs/DuoBar_0.2.0_RootHide.deb; do
+            echo "::group::Checking https://rbx9.github.io/$path"
+            curl -fLSs --retry 4 --retry-delay 3 --connect-timeout 15 --max-time 60 \
+              -D /tmp/headers -o /tmp/file \
+              -w 'STATUS:%{http_code} CONTENT_TYPE:%{content_type} BYTES:%{size_download} FINAL_URL:%{url_effective}\n' \
+              "https://rbx9.github.io/$path"
+            head -n 20 /tmp/headers
+            if [[ "$path" == Release ]]; then
+              sed -n '1,18p' /tmp/file
+              grep -qx 'Components: main' /tmp/file
+              grep -qx 'Origin: RBx9' /tmp/file
+            elif [[ "$path" == Packages ]]; then
+              sed -n '1,21p' /tmp/file
+              grep -qx 'Package: local.duobar' /tmp/file
+            elif [[ "$path" == Packages.gz ]]; then
+              gzip -t /tmp/file
+            elif [[ "$path" == *.deb ]]; then
+              echo '6e50eb08bbf7babb3996504c23bb1d22b4e97d542e1809fec64eb43458f80781  /tmp/file' | sha256sum --check
+            fi
+            echo "::endgroup::"
+          done
