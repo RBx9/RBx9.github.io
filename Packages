@@ -11,12 +11,12 @@ SHA1: 5793586afc71791b72303e950bc8607a6ec6f6d8
 SHA256: 6e50eb08bbf7babb3996504c23bb1d22b4e97d542e1809fec64eb43458f80781
 Section: Tweaks
 Homepage: https://twitter.com/RedaBuali
-Description: An iPhone Duo-inspired status bar for iOS 16.
+Description: DuoBar (RootHide) - circular battery, Wi-Fi and cellular indicators for iOS 16.
  A circular battery ring with a live percentage, Wi-Fi strength and four cellular signal dots.
  Includes charging and Low Power Mode colors, light and dark styling, and an on/off switch in Settings.
  Developed by RBx9. Twitter: @RedaBuali.
 Tag: role::tweak
 Author: RBx9
 Name: DuoBar (RootHide)
-Depiction: https://rbx9.github.io/depictions/duobar.html
-SileoDepiction: https://rbx9.github.io/depictions/duobar.json
+Depiction: https://rbx9.github.io/depictions/duobar-v2.html
+SileoDepiction: https://rbx9.github.io/depictions/duobar-v2.json
