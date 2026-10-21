@@ -20,3 +20,27 @@ Author: RBx9
 Name: DuoBar (RootHide)
 Depiction: https://rbx9.github.io/depictions/duobar-v2.html
 SileoDepiction: https://rbx9.github.io/depictions/duobar-v2.json
+
+Package: local.duobar.rootless
+Version: 0.2.3
+Architecture: iphoneos-arm64
+Maintainer: RBx9
+Installed-Size: 264
+Depends: mobilesubstrate, preferenceloader, firmware (>= 16.0), firmware (<< 17.0)
+Conflicts: local.duobar
+Filename: debs/DuoBar_0.2.3_Rootless.deb
+Size: 83238
+MD5sum: e750ffc2ca8efdeb5a8bd0a01599bfd7
+SHA1: cb36e0823a96db03dc34e2b37b6d332191c7a6f7
+SHA256: ac9e458d91c71bf1521a5f46c4f93aae7af8ce5aa5985435ca743a48d215abac
+Section: Tweaks
+Homepage: https://github.com/RBx9/DuoBar
+Description: DuoBar (Rootless) - iOS 16 Rootless edition with adjustable size. First release is pending device testing.
+ Includes a live adjustable 70%-140% size slider, Settings integration,
+ charging and Low Power Mode colors, and Control Center layout improvements.
+ Rootless Dopamine edition. First release needs real-device validation.
+Tag: role::tweak
+Author: RBx9
+Name: DuoBar (Rootless)
+Depiction: https://rbx9.github.io/depictions/duobar-rootless.html
+SileoDepiction: https://rbx9.github.io/depictions/duobar-rootless.json
