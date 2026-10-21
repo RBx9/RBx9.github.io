@@ -19,8 +19,9 @@
           "class": "DepictionImageView",
           "URL": "https://rbx9.github.io/depictions/duobar-demonstration.png",
           "width": 320,
-          "height": 263,
-          "cornerRadius": 12
+          "height": 229,
+          "cornerRadius": 12,
+          "alignment": 1
         },
         {
           "class": "DepictionLabelView",
