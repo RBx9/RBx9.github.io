@@ -1,6 +1,6 @@
 {
   "minVersion": "0.1",
-  "headerImage": "https://raw.githubusercontent.com/RBx9/DuoBar/main/docs/demo.png",
+  "headerImage": "https://rbx9.github.io/depictions/duobar-demonstration.png",
   "tintColor": "#657ED9",
   "tabs": [
     {
@@ -18,7 +18,7 @@
           "class": "DepictionScreenshotsView",
           "screenshots": [
             {
-              "url": "https://raw.githubusercontent.com/RBx9/DuoBar/main/docs/demo.png",
+              "url": "https://rbx9.github.io/depictions/duobar-demonstration.png",
               "accessibilityText": "DuoBar design preview with circular battery ring, battery percentage, Wi-Fi and cellular dots"
             }
           ]
