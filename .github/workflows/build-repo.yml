@@ -9,6 +9,11 @@ on:
       - '.github/workflows/build-repo.yml'
   workflow_dispatch:
 
+# Serialize metadata builds to avoid competing package-index commits.
+concurrency:
+  group: rbx9-sileo-index
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -31,5 +36,16 @@ jobs:
           git add -A -- Packages Packages.gz Packages.bz2 Release debs/
           if ! git diff --cached --quiet; then
             git commit -m "Update verified Sileo packages and APT index"
-            git push origin HEAD:main
+            # Other commits (e.g. depiction changes) may land during this build.
+            # Rebase the generated index commit onto the latest main before pushing.
+            for attempt in 1 2 3 4 5; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then
+                exit 0
+              fi
+              sleep 3
+            done
+            echo "Failed to publish index after 5 attempts" >&2
+            exit 1
           fi
