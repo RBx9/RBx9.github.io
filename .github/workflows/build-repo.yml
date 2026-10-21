@@ -1,0 +1,35 @@
+name: Build Sileo Repository
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'package-sources.txt'
+      - 'scripts/**'
+      - '.github/workflows/build-repo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install Debian index tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y dpkg-dev bzip2
+      - name: Build and verify Sileo package index
+        run: bash scripts/build-repo.sh
+      - name: Commit generated index and verified packages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- Packages Packages.gz Packages.bz2 Release debs/
+          if ! git diff --cached --quiet; then
+            git commit -m "Update verified Sileo packages and APT index"
+            git push origin HEAD:main
+          fi
