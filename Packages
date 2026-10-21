@@ -1,14 +1,14 @@
 Package: local.duobar
-Version: 0.2.0
+Version: 0.2.1
 Architecture: iphoneos-arm64e
 Maintainer: RBx9
-Installed-Size: 408
+Installed-Size: 448
 Depends: mobilesubstrate, preferenceloader, firmware (>= 16.0), firmware (<< 17.0)
-Filename: debs/DuoBar_0.2.0_RootHide.deb
-Size: 25116
-MD5sum: bc69c8398eedcfc6759c4dc715b1c5db
-SHA1: 5793586afc71791b72303e950bc8607a6ec6f6d8
-SHA256: 6e50eb08bbf7babb3996504c23bb1d22b4e97d542e1809fec64eb43458f80781
+Filename: debs/DuoBar_0.2.1_RootHide.deb
+Size: 90392
+MD5sum: 1c3b45fc5ff509b940fadd3e6adc8c7e
+SHA1: 9d173cf9ffd7dbd02b41edf65a2e290589b283f2
+SHA256: 1541297cc0a74b23b1d0b5d9407ffa431875c7240a70780d1925cb07df593d30
 Section: Tweaks
 Homepage: https://twitter.com/RedaBuali
 Description: DuoBar (RootHide) - circular battery, Wi-Fi and cellular indicators for iOS 16.
