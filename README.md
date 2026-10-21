@@ -1,5 +1,7 @@
 # RBx9 Repo
 
+![RBx9 Repo logo](assets/rbx9-logo.jpg)
+
 A reusable Sileo / APT repository for jailbreak tweaks developed by **RBx9**.
 
 **Sileo source URL:**
