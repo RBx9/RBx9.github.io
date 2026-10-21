@@ -1,0 +1,50 @@
+{
+  "minVersion": "0.1",
+  "headerImage": "https://raw.githubusercontent.com/RBx9/DuoBar/main/docs/demo.png",
+  "tintColor": "#657ED9",
+  "tabs": [
+    {
+      "tabname": "Details",
+      "views": [
+        {
+          "class": "DepictionSubheaderView",
+          "title": "DuoBar (RootHide)"
+        },
+        {
+          "class": "DepictionMarkdownView",
+          "markdown": "An iPhone Duo-inspired circular status bar for **iOS 16 with Dopamine RootHide**. Combines battery, Wi-Fi, and cellular strength in one compact indicator."
+        },
+        {
+          "class": "DepictionScreenshotsView",
+          "screenshots": [
+            {
+              "url": "https://raw.githubusercontent.com/RBx9/DuoBar/main/docs/demo.png",
+              "accessibilityText": "DuoBar design preview with circular battery ring, battery percentage, Wi-Fi and cellular dots"
+            }
+          ]
+        },
+        {
+          "class": "DepictionHeaderView",
+          "title": "Features"
+        },
+        {
+          "class": "DepictionMarkdownView",
+          "markdown": "- Live battery percentage and circular charge ring\n- Wi-Fi strength and four cellular signal dots\n- Charging, Low Power Mode, and light/dark appearance\n- Enable/disable in **Settings → DuoBar**"
+        },
+        {
+          "class": "DepictionHeaderView",
+          "title": "Compatibility"
+        },
+        {
+          "class": "DepictionMarkdownView",
+          "markdown": "**iOS 16.x · Dopamine RootHide only.** Requires tweak injection and PreferenceLoader. Not compatible with standard rootless packages.\n\n*The illustration is a design preview, not an actual device screenshot.*"
+        },
+        {
+          "class": "DepictionButtonView",
+          "text": "Source code & releases",
+          "action": "https://github.com/RBx9/DuoBar"
+        }
+      ]
+    }
+  ]
+}
