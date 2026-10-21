@@ -1,0 +1,20 @@
+Origin: RBx9
+Label: RBx9 Repo
+Suite: stable
+Codename: stable
+Version: 1.0
+Architectures: iphoneos-arm64e iphoneos-arm64 all
+Description: RBx9's jailbreak tweak repository for Sileo
+Date: Wed, 21 Oct 2026 01:50:40 GMT
+MD5Sum:
+ 06f3328b888ca34db95e09dfceec2022              800 Packages
+ 97397562ffc394a64e6faeeaef5984aa              570 Packages.gz
+ 6f5bb13efbdac57deb0a5487599e98f0              628 Packages.bz2
+SHA256:
+ 888b92e46235edd707d43f4ded3122aa9b1becf5ae247d683d7781815f52ef0b              800 Packages
+ 8878f04e638cb056e4c1e7634f92a7451cd1b576f734dbf82500b405b681ac68              570 Packages.gz
+ 91515af809f441889100885760092fb505d8742a9d643b13cbef0704b317542b              628 Packages.bz2
+SHA512:
+ a4e2b2de5534faf14936acd0a8d56f15839505f66f3907a081e8112e6bc578f5e99de3a90efb7ca3ac5723605d4ff4e3eb5693add67b213622f113538f884b3e              800 Packages
+ c7d02ae32a84c7778b8bb15d7df325950dbd5a5577c214bc6dc49079ccb3e2405d198d81b448d4fcd3e929fd11e8f16648c4b69aab2ac5bd3748854105f8163d              570 Packages.gz
+ 83e0ae38ec57bf6cd5a3ca80c5eee4f56ae01df06b5bff2806b0b3c00b00e381bcb6d59059d520f29b97b7c26902a395aa1bdca233aa894f728a4f8172ec8fd6              628 Packages.bz2
