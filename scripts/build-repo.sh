@@ -48,8 +48,12 @@ for index, stanza in enumerate(stanzas):
             fields.append("Name: DuoBar (RootHide)")
         # Sileo uses the depiction URL to show screenshots and richer details.
         fields = [line for line in fields if not line.startswith(("Depiction: ", "SileoDepiction: "))]
-        fields.append("Depiction: https://rbx9.github.io/depictions/duobar.html")
-        fields.append("SileoDepiction: https://rbx9.github.io/depictions/duobar.json")
+        fields = [
+            "Description: DuoBar (RootHide) - circular battery, Wi-Fi and cellular indicators for iOS 16."
+            if line.startswith("Description: ") else line for line in fields
+        ]
+        fields.append("Depiction: https://rbx9.github.io/depictions/duobar-v2.html")
+        fields.append("SileoDepiction: https://rbx9.github.io/depictions/duobar-v2.json")
         stanzas[index] = "\n".join(fields)
 p.write_text("\n\n".join(stanzas) + "\n", encoding="utf-8")
 PY
