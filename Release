@@ -6,20 +6,20 @@ Components: main
 Version: 1.0
 Architectures: iphoneos-arm64e iphoneos-arm64 all
 Description: RBx9's jailbreak tweak repository for Sileo
-Date: Wed, 21 Oct 2026 01:58:26 GMT
+Date: Wed, 21 Oct 2026 02:03:11 GMT
 MD5Sum:
- 06f3328b888ca34db95e09dfceec2022              800 Packages
- 97397562ffc394a64e6faeeaef5984aa              570 Packages.gz
- 6f5bb13efbdac57deb0a5487599e98f0              628 Packages.bz2
+ 4d4d326ee451d6ac31763c24beb3e435              810 Packages
+ e4a7aadacc5d81da9014e1bdde0cbcbd              574 Packages.gz
+ a9b441420dfa3300c59b47f0f1bcfac2              627 Packages.bz2
 SHA1:
- 829a03d156892263fc0356b1213f3b2bc4bd4b08              800 Packages
- 06b5a676e90fc08505cf4bfd5296868a4e20c9ad              570 Packages.gz
- 0c5003dff46803239881d670c0e28e2f89433cab              628 Packages.bz2
+ 0ad6edaaf74ea471adf6bc54133ad14537b6032d              810 Packages
+ 8f7a803f15d2fa216d265df707304350953ca15c              574 Packages.gz
+ a8df4904339f21cbfc65cae95ea3facd6a272550              627 Packages.bz2
 SHA256:
- 888b92e46235edd707d43f4ded3122aa9b1becf5ae247d683d7781815f52ef0b              800 Packages
- 8878f04e638cb056e4c1e7634f92a7451cd1b576f734dbf82500b405b681ac68              570 Packages.gz
- 91515af809f441889100885760092fb505d8742a9d643b13cbef0704b317542b              628 Packages.bz2
+ 172e716c32d4410ffc47971780948dff089577b9d0c121c9e6c3ebce2723a757              810 Packages
+ 5642b604c4b442eb43c4faf5a5cb3f50ffe7b8b7fe40898719a55613b32b344f              574 Packages.gz
+ 43f592a8aa4acfcdc8a0c73f684af62e6740d06ffaa86f2244430c101d7b9d87              627 Packages.bz2
 SHA512:
- a4e2b2de5534faf14936acd0a8d56f15839505f66f3907a081e8112e6bc578f5e99de3a90efb7ca3ac5723605d4ff4e3eb5693add67b213622f113538f884b3e              800 Packages
- c7d02ae32a84c7778b8bb15d7df325950dbd5a5577c214bc6dc49079ccb3e2405d198d81b448d4fcd3e929fd11e8f16648c4b69aab2ac5bd3748854105f8163d              570 Packages.gz
- 83e0ae38ec57bf6cd5a3ca80c5eee4f56ae01df06b5bff2806b0b3c00b00e381bcb6d59059d520f29b97b7c26902a395aa1bdca233aa894f728a4f8172ec8fd6              628 Packages.bz2
+ 55a7db7da240c576d0ca3ad0c245af72980c17c072b5f5fe4ace2018815bf224dfc22fe418ccef4b1de65782f188e27b96a8b726e1c79055c50f38baf3c07e04              810 Packages
+ 6788054828be4087b1204065954a04ea7470f79475b722b6f40a8e1ded58e1eb2e56ac7bb48765bed71edd223f2dba3f9bf33e6aa3b426e72e5290727a9104d3              574 Packages.gz
+ 6b6a50bf8f7b8dc751c230450f72d8adae2d6d892d27594377ac73bf961b5827281805c33eb45dd0a511047ec974a0cb509fb291e283d8d9bde4f61d9d22bc55              627 Packages.bz2
