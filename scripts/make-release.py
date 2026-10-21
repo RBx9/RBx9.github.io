@@ -10,13 +10,14 @@ lines = [
     "Origin: RBx9",
     "Label: RBx9 Repo",
     "Suite: stable",
-    "Codename: stable",
+    "Codename: ios",
+    "Components: main",
     "Version: 1.0",
     "Architectures: iphoneos-arm64e iphoneos-arm64 all",
     "Description: RBx9's jailbreak tweak repository for Sileo",
     f"Date: {format_datetime(datetime.now(timezone.utc), usegmt=True)}",
 ]
-for section, algorithm in (("MD5Sum", "md5"), ("SHA256", "sha256"), ("SHA512", "sha512")):
+for section, algorithm in (("MD5Sum", "md5"), ("SHA1", "sha1"), ("SHA256", "sha256"), ("SHA512", "sha512")):
     lines.append(section + ":")
     for path in files:
         payload = path.read_bytes()
