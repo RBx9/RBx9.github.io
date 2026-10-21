@@ -35,7 +35,7 @@
         },
         {
           "class": "DepictionMarkdownView",
-          "markdown": "- Battery percentage with an open circular charge ring\n- Wi‑Fi indicator in the center and four cellular dots\n- Light and dark status-bar appearances\n- Special colors for low battery, charging, and Low Power Mode\n- **Settings → DuoBar → Enable DuoBar** to turn it on or restore the original icons"
+          "markdown": "- Battery percentage with an open circular charge ring\n- Wi‑Fi indicator in the center and four cellular dots\n- Light and dark status-bar appearances\n- Special colors for low battery, charging, and Low Power Mode\n- **Settings → DuoBar → Enable DuoBar** to turn it on or restore the original icons\n- Control Center battery percentage and rotation-lock overlap fixes\n- New Settings icon, organized options, and direct RBx9 Repo / Sileo links"
         },
         {
           "class": "DepictionHeaderView",
@@ -48,7 +48,7 @@
         {
           "class": "DepictionTableTextView",
           "title": "Version",
-          "text": "0.2.0"
+          "text": "0.2.1"
         },
         {
           "class": "DepictionTableTextView",
