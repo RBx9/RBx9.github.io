@@ -1,2 +1,2 @@
 # GitHub release URL|Installer filename|SHA-256
-https://github.com/RBx9/DuoBar/releases/download/v0.2.2/DuoBar_0.2.2_RootHide.deb|DuoBar_0.2.2_RootHide.deb|2ae09dbec6dab69f84f1d9901b27349b9950bbdc096855f760a947cf836bbf23
+https://github.com/RBx9/DuoBar/releases/download/v0.2.3/DuoBar_0.2.3_RootHide.deb|DuoBar_0.2.3_RootHide.deb|4ddf9b5a028b17d9b9e0d0da6a165acae1192779e15cff2b26cfc05c633a34a2
