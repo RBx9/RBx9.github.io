@@ -46,6 +46,10 @@ for index, stanza in enumerate(stanzas):
         fields = ["Name: DuoBar (RootHide)" if line.startswith("Name: ") else line for line in fields]
         if not any(line.startswith("Name: ") for line in fields):
             fields.append("Name: DuoBar (RootHide)")
+        # Sileo uses the depiction URL to show screenshots and richer details.
+        fields = [line for line in fields if not line.startswith(("Depiction: ", "SileoDepiction: "))]
+        fields.append("Depiction: https://rbx9.github.io/depictions/duobar.html")
+        fields.append("SileoDepiction: https://rbx9.github.io/depictions/duobar.json")
         stanzas[index] = "\n".join(fields)
 p.write_text("\n\n".join(stanzas) + "\n", encoding="utf-8")
 PY
