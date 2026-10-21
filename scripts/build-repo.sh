@@ -55,6 +55,17 @@ for index, stanza in enumerate(stanzas):
         fields.append("Depiction: https://rbx9.github.io/depictions/duobar-v2.html")
         fields.append("SileoDepiction: https://rbx9.github.io/depictions/duobar-v2.json")
         stanzas[index] = "\n".join(fields)
+    elif "Package: local.duobar.rootless" in fields and "Architecture: iphoneos-arm64" in fields:
+        # Keep Rootless metadata and depiction separate from the RootHide edition.
+        fields = [line for line in fields if not line.startswith(("Name: ", "Depiction: ", "SileoDepiction: "))]
+        fields = [
+            "Description: DuoBar (Rootless) - iOS 16 Rootless edition with adjustable size. First release is pending device testing."
+            if line.startswith("Description: ") else line for line in fields
+        ]
+        fields.append("Name: DuoBar (Rootless)")
+        fields.append("Depiction: https://rbx9.github.io/depictions/duobar-rootless.html")
+        fields.append("SileoDepiction: https://rbx9.github.io/depictions/duobar-rootless.json")
+        stanzas[index] = "\n".join(fields)
 p.write_text("\n\n".join(stanzas) + "\n", encoding="utf-8")
 PY
 if [[ ! -s Packages ]]; then
