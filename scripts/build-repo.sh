@@ -49,7 +49,7 @@ for index, stanza in enumerate(stanzas):
         # Sileo uses the depiction URL to show screenshots and richer details.
         fields = [line for line in fields if not line.startswith(("Depiction: ", "SileoDepiction: "))]
         fields = [
-            "Description: DuoBar (RootHide) - circular battery, Wi-Fi and cellular indicators for iOS 16."
+            "Description: DuoBar (RootHide) - circular battery/Wi-Fi/cellular indicator for iOS 16 with Personal Hotspot support, Control Center fixes and adjustable size."
             if line.startswith("Description: ") else line for line in fields
         ]
         fields.append("Depiction: https://rbx9.github.io/depictions/duobar-v2.html")
