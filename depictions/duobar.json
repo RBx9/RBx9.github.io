@@ -1,27 +1,33 @@
 {
-  "minVersion": "0.1",
-  "headerImage": "https://rbx9.github.io/depictions/duobar-demonstration.png",
-  "tintColor": "#657ED9",
+  "minVersion": "0.4",
+  "class": "DepictionTabView",
+  "tintColor": "#4687E8",
   "tabs": [
     {
+      "class": "DepictionStackView",
       "tabname": "Details",
       "views": [
         {
-          "class": "DepictionSubheaderView",
+          "class": "DepictionHeaderView",
           "title": "DuoBar (RootHide)"
         },
         {
           "class": "DepictionMarkdownView",
-          "markdown": "An iPhone Duo-inspired circular status bar for **iOS 16 with Dopamine RootHide**. Combines battery, Wi-Fi, and cellular strength in one compact indicator."
+          "markdown": "**One circular design. Three live indicators.**\n\nDuoBar brings battery percentage, Wi‑Fi strength, and cellular signal together in a clean, compact status-bar icon for iOS 16."
         },
         {
-          "class": "DepictionScreenshotsView",
-          "screenshots": [
-            {
-              "url": "https://rbx9.github.io/depictions/duobar-demonstration.png",
-              "accessibilityText": "DuoBar design preview with circular battery ring, battery percentage, Wi-Fi and cellular dots"
-            }
-          ]
+          "class": "DepictionImageView",
+          "URL": "https://rbx9.github.io/depictions/duobar-demonstration.png",
+          "width": 320,
+          "height": 229,
+          "cornerRadius": 12,
+          "alignment": 1
+        },
+        {
+          "class": "DepictionLabelView",
+          "text": "Design preview · illustrative values, not an on-device screenshot",
+          "fontSize": 12,
+          "textColor": "#777777"
         },
         {
           "class": "DepictionHeaderView",
@@ -29,7 +35,7 @@
         },
         {
           "class": "DepictionMarkdownView",
-          "markdown": "- Live battery percentage and circular charge ring\n- Wi-Fi strength and four cellular signal dots\n- Charging, Low Power Mode, and light/dark appearance\n- Enable/disable in **Settings → DuoBar**"
+          "markdown": "- Battery percentage with an open circular charge ring\n- Wi‑Fi indicator in the center and four cellular dots\n- Light and dark status-bar appearances\n- Special colors for low battery, charging, and Low Power Mode\n- **Settings → DuoBar → Enable DuoBar** to turn it on or restore the original icons"
         },
         {
           "class": "DepictionHeaderView",
@@ -37,11 +43,21 @@
         },
         {
           "class": "DepictionMarkdownView",
-          "markdown": "**iOS 16.x · Dopamine RootHide only.** Requires tweak injection and PreferenceLoader. Not compatible with standard rootless packages.\n\n*The illustration is a design preview, not an actual device screenshot.*"
+          "markdown": "**iOS 16.x · Dopamine RootHide only** (`iphoneos-arm64e`). Requires tweak injection and PreferenceLoader. Not intended for standard rootless jailbreaks."
+        },
+        {
+          "class": "DepictionTableTextView",
+          "title": "Version",
+          "text": "0.2.0"
+        },
+        {
+          "class": "DepictionTableTextView",
+          "title": "Developer",
+          "text": "RBx9"
         },
         {
           "class": "DepictionButtonView",
-          "text": "Source code & releases",
+          "text": "View source code and releases",
           "action": "https://github.com/RBx9/DuoBar"
         }
       ]
