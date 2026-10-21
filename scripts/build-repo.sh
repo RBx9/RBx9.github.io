@@ -33,6 +33,22 @@ if [[ "$count" -eq 0 ]]; then
 fi
 
 dpkg-scanpackages --multiversion debs /dev/null > Packages
+# Display RootHide compatibility in Sileo without altering the signed .deb.
+# Override only the index Name field for this exact package and architecture.
+python3 - <<'PY'
+from pathlib import Path
+
+p = Path("Packages")
+stanzas = p.read_text().strip().split("\n\n")
+for index, stanza in enumerate(stanzas):
+    fields = stanza.splitlines()
+    if "Package: local.duobar" in fields and "Architecture: iphoneos-arm64e" in fields:
+        fields = ["Name: DuoBar (RootHide)" if line.startswith("Name: ") else line for line in fields]
+        if not any(line.startswith("Name: ") for line in fields):
+            fields.append("Name: DuoBar (RootHide)")
+        stanzas[index] = "\n".join(fields)
+p.write_text("\n\n".join(stanzas) + "\n", encoding="utf-8")
+PY
 if [[ ! -s Packages ]]; then
   echo "ERROR: Package index is empty." >&2
   exit 1
