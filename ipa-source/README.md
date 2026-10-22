@@ -3,7 +3,7 @@
 Your public IPA library is **https://rbx9.github.io/ipa-source/**.
 
 - Feather source: `https://rbx9.github.io/ipa/`
-- ESign source: `https://rbx9.github.io/esign/`
+- ESign source: `https://rbx9.github.io/ipa/` (same URL as Feather)
 - Existing Sileo tweak source (unchanged): `https://rbx9.github.io/`
 
 ## Upload your first IPA
@@ -14,6 +14,8 @@ Your public IPA library is **https://rbx9.github.io/ipa-source/**.
 4. Enter release notes if desired. These show as the version's What's New text.
 5. Select **Publish release**.
 6. Check [Publish Feather and ESign IPA Sources](https://github.com/RBx9/RBx9.github.io/actions/workflows/build-ipa-source.yml). Once the workflow succeeds and Pages updates, users refresh the source in Feather or ESign to see the apps.
+
+Both apps can use the same universal feed. The older `/esign/`, `ipa-source/source.json`, and `ipa-source/esign.json` links remain available.
 
 The workflow downloads the uploaded IPA, reads `Payload/*.app/Info.plist` for its bundle ID/name/version/build/minimum OS version, and publishes two JSON catalogs pointing to the GitHub Release asset. No need to manually edit source JSON for each upload.
 
