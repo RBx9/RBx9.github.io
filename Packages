@@ -1,14 +1,14 @@
 Package: local.duobar
-Version: 0.2.7
+Version: 2.7.1
 Architecture: iphoneos-arm64e
 Maintainer: RBx9
 Installed-Size: 516
 Depends: mobilesubstrate, preferenceloader, firmware (>= 16.0), firmware (<< 17.0)
-Filename: debs/DuoBar_0.2.7_RootHide.deb
-Size: 108986
-MD5sum: 2aae2fb0571f9ee44537a16a6c267ac9
-SHA1: 369386e9b045f1ccc41c44d2cfcb5899610c4100
-SHA256: 47374bc87323021311845e3d2720f3e3a322ab71aae0a4fe873b254ad4efbf85
+Filename: debs/DuoBar_2.7.1_RootHide.deb
+Size: 109102
+MD5sum: 4472cf0bbd02b850ca0e15f7ed415f63
+SHA1: 4e1bf8f7df65156444f3bacf3e1d08924da597b3
+SHA256: af043772a947f6e4cc42634fe1738248c2693d7577b8bb7192c7790cd6c0d9d4
 Section: Tweaks
 Homepage: https://twitter.com/RedaBuali
 Description: DuoBar (RootHide) - iOS 16 combined battery/Wi-Fi/cellular indicator, adjustable size, Control Center fixes, and improvements.
@@ -22,17 +22,17 @@ Depiction: https://rbx9.github.io/depictions/duobar-v2.html
 SileoDepiction: https://rbx9.github.io/depictions/duobar-v2.json
 
 Package: local.duobar.rootless
-Version: 0.2.7
+Version: 2.7.1
 Architecture: iphoneos-arm64
 Maintainer: RBx9
 Installed-Size: 516
 Depends: mobilesubstrate, preferenceloader, firmware (>= 16.0), firmware (<< 17.0)
 Conflicts: local.duobar
-Filename: debs/DuoBar_0.2.7_Rootless.deb
-Size: 109142
-MD5sum: 47ad5276ef9a575aae601a731e1e57f2
-SHA1: de52fe8d204719fcac63bd7da0ae75bfc6868554
-SHA256: 2682f410a44611bb5203552594f64ae9dc552ddb358ddca60556b9def7285d77
+Filename: debs/DuoBar_2.7.1_Rootless.deb
+Size: 109176
+MD5sum: 4e0641ca8af71760afa2d8767efd3b86
+SHA1: 00ac832a56978576ed6a34e11b52d32d92c6b9d9
+SHA256: b3f49a1c7eeaf5c875a90e0c3f823c8488705881638082656714b0edeb66e014
 Section: Tweaks
 Homepage: https://github.com/RBx9/DuoBar
 Description: DuoBar (Rootless) - iOS 16 combined battery/Wi-Fi/cellular indicator, size slider, Control Center fixes, and improvements. Device testing pending.
