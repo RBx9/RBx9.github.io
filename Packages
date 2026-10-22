@@ -1,17 +1,17 @@
 Package: local.duobar
-Version: 0.2.5
+Version: 0.2.6
 Architecture: iphoneos-arm64e
 Maintainer: RBx9
-Installed-Size: 504
+Installed-Size: 516
 Depends: mobilesubstrate, preferenceloader, firmware (>= 16.0), firmware (<< 17.0)
-Filename: debs/DuoBar_0.2.5_RootHide.deb
-Size: 100364
-MD5sum: 443c4c57fa7e18f0799fbb49bed76494
-SHA1: 58d7390061796e722e26693fbed3acdf491e4cd5
-SHA256: a54536a5e90bc46b7740b96d5926a52d62cebb7d941356f041fc5925e3924bcd
+Filename: debs/DuoBar_0.2.6_RootHide.deb
+Size: 108870
+MD5sum: 0ec3ba6d85cf66fac8cde2a59a090d4f
+SHA1: f90e322e5e8e785597c47d34aafadb0c0bfc041c
+SHA256: 5da13a4e258dd3ce7df8feac96e7ec028471a0b2321e256ca88f7420e5975cdb
 Section: Tweaks
 Homepage: https://twitter.com/RedaBuali
-Description: DuoBar (RootHide) - circular battery/Wi-Fi/cellular indicator for iOS 16 with Personal Hotspot support, Control Center fixes and adjustable size.
+Description: DuoBar (RootHide) - iOS 16 circular battery/Wi-Fi/cellular icon, hotspot and Control Center fixes, adjustable size, transparent Settings icon and bug reporting.
  A circular battery ring with a live percentage, Wi-Fi strength and four cellular signal dots.
  Includes charging and Low Power Mode colors, light and dark styling, an adjustable size slider, and an on/off switch in Settings.
  Developed by RBx9. Twitter: @RedaBuali.
