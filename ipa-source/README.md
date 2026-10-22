@@ -2,14 +2,14 @@
 
 Your public IPA library is **https://rbx9.github.io/ipa-source/**.
 
-- Feather source: `https://rbx9.github.io/ipa-source/source.json`
-- ESign source: `https://rbx9.github.io/ipa-source/esign.json`
+- Feather source: `https://rbx9.github.io/ipa/`
+- ESign source: `https://rbx9.github.io/esign/`
 - Existing Sileo tweak source (unchanged): `https://rbx9.github.io/`
 
 ## Upload your first IPA
 
 1. Open [Create a GitHub Release](https://github.com/RBx9/RBx9.github.io/releases/new).
-2. Create a **new tag beginning with `ipa-`**, e.g. `ipa-myapp-1.0`. This prefix ensures IPA uploads do not conflict with Sileo .deb releases.
+2. Create a **unique tag** for each version, e.g. `ipa-myapp-1.0`. The `ipa-` prefix is recommended but not required.
 3. Attach one or more `.ipa` files to the release. Use filenames ending in lowercase `.ipa`.
 4. Enter release notes if desired. These show as the version's What's New text.
 5. Select **Publish release**.
@@ -17,7 +17,7 @@ Your public IPA library is **https://rbx9.github.io/ipa-source/**.
 
 The workflow downloads the uploaded IPA, reads `Payload/*.app/Info.plist` for its bundle ID/name/version/build/minimum OS version, and publishes two JSON catalogs pointing to the GitHub Release asset. No need to manually edit source JSON for each upload.
 
-To re-import an already published release, open Actions → Publish Feather and ESign IPA Sources → Run workflow → enter the `ipa-` release tag.
+To re-import an already published release, open Actions → Publish Feather and ESign IPA Sources → Run workflow → enter the release tag.
 
 ## Customize an app after uploading
 
@@ -27,7 +27,7 @@ Icons should be publicly accessible via HTTPS. Newly uploaded apps use the repos
 
 ## Troubleshooting
 
-- App missing: check the workflow logs and ensure the release name starts with `ipa-` and has a real `.ipa` asset.
+- App missing: check the workflow logs and ensure the release contains a real `.ipa` asset.
 - Import errors: verify the `source.json` or `esign.json` link returns JSON, and then refresh Sources.
 - Signing errors: IPA distribution is separate from signing. Users need their own compatible certificates or signing methods.
 - Only distribute apps you created or have permission to share.
