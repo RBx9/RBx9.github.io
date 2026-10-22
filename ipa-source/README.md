@@ -21,6 +21,20 @@ The workflow downloads the uploaded IPA, reads `Payload/*.app/Info.plist` for it
 
 To re-import an already published release, open Actions → Publish Feather and ESign IPA Sources → Run workflow → enter the release tag.
 
+## Automatic Stremio iOS/iPadOS updates
+
+Stremio (`com.stremio.pal`) is tracked from the
+[gorlev/stremio-altstore iOS source](https://github.com/gorlev/stremio-altstore/blob/main/stremio-ios.json).
+The workflow checks every **6 hours** (subject to GitHub Actions scheduling), selects only the
+newest valid **iOS/iPadOS** version and build, and links directly to the IPA on
+`dl.strem.io`. **No older Stremio versions or tvOS builds are added to this library.**
+Updates appear at `https://rbx9.github.io/ipa/` after the GitHub Pages deployment.
+If upstream is unavailable, the last published entry is retained rather than
+replacing it with unverified information.
+
+This is an unofficial feed integration; the apps and builds remain Stremio's,
+and upstream metadata depends on that community-maintained mirror.
+
 ## Customize an app after uploading
 
 Edit [catalog.json](https://github.com/RBx9/RBx9.github.io/blob/main/ipa-source/catalog.json) in GitHub. Apps are keyed by their bundle identifier. Edit `name`, `developerName`, `subtitle`, `localizedDescription`, `iconURL`, `category`, and optionally `screenshots` and `tintColor`. Committing an edit automatically regenerates both feeds. **Do not edit `source.json` or `esign.json` directly**, since the action overwrites them.
