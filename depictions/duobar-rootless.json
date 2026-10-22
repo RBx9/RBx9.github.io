@@ -35,7 +35,7 @@
         },
         {
           "class": "DepictionMarkdownView",
-          "markdown": "- Battery percentage with an open circular charge ring\n- Wi‑Fi indicator in the center and four cellular dots\n- Light and dark status-bar appearances\n- Special colors for low battery, charging, and Low Power Mode\n- **Settings → DuoBar → Enable DuoBar** to turn it on or restore the original icons\n- Control Center battery percentage and rotation-lock overlap fixes\n- Custom Settings icon, organized options, and direct RBx9 Repo / Sileo links\n- Adjustable DuoBar Size slider from **70% to 140%** with live updates and Reset Size to 100%"
+          "markdown": "- Battery percentage with an open circular charge ring\n- Wi‑Fi indicator in the center and four cellular dots\n- Light and dark status-bar appearances\n- Special colors for low battery, charging, and Low Power Mode\n- **Settings → DuoBar → Enable DuoBar** to turn it on or restore the original icons\n- Control Center battery percentage and rotation-lock overlap fixes\n- Custom Settings icon, organized options, and direct RBx9 Repo / Sileo links\n- Adjustable DuoBar Size slider from **70% to 140%** with live updates and Reset Size to 100%\n- **New v0.2.6:** Transparent Settings icon and Report a Bug / Help Test Other iOS Versions email shortcuts\n- Updated to the v0.2.6 codebase, including the Personal Hotspot chain-link inside the ring and Control Center layout fixes"
         },
         {
           "class": "DepictionHeaderView",
@@ -56,7 +56,7 @@
         {
           "class": "DepictionTableTextView",
           "title": "Version",
-          "text": "0.2.3"
+          "text": "0.2.6"
         },
         {
           "class": "DepictionTableTextView",
@@ -66,7 +66,7 @@
         {
           "class": "DepictionButtonView",
           "text": "View source code and releases",
-          "action": "https://github.com/RBx9/DuoBar/releases/tag/v0.2.3-rootless.1"
+          "action": "https://github.com/RBx9/DuoBar/releases/tag/v0.2.6-rootless.1"
         }
       ]
     }

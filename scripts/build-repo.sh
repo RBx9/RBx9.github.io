@@ -59,7 +59,7 @@ for index, stanza in enumerate(stanzas):
         # Keep Rootless metadata and depiction separate from the RootHide edition.
         fields = [line for line in fields if not line.startswith(("Name: ", "Depiction: ", "SileoDepiction: "))]
         fields = [
-            "Description: DuoBar (Rootless) - iOS 16 Rootless edition with adjustable size. First release is pending device testing."
+            "Description: DuoBar (Rootless) - iOS 16 Rootless build with size slider, Personal Hotspot, Control Center fixes, transparent Settings icon and bug reports. Device testing pending."
             if line.startswith("Description: ") else line for line in fields
         ]
         fields.append("Name: DuoBar (Rootless)")

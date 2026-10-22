@@ -2,7 +2,7 @@
 
 ![RBx9 Repo logo](assets/rbx9-logo.jpg)
 
-A reusable Sileo / APT repository for jailbreak tweaks developed by **RBx9**. Current DuoBar editions: **RootHide v0.2.6** (tested, hotspot and Control Center fixes) and **Rootless v0.2.3** (separate initial build).
+A reusable Sileo / APT repository for jailbreak tweaks developed by **RBx9**. Current DuoBar editions: **RootHide v0.2.6** (tested, hotspot and Control Center fixes) and **Rootless v0.2.6** (separate initial build).
 
 **Sileo source URL:**
 https://rbx9.github.io/
