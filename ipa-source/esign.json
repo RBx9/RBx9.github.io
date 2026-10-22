@@ -2,7 +2,7 @@
   "name": "RBx9 IPA Library",
   "identifier": "com.rbx9.ipa.library",
   "subtitle": "iOS applications for Feather and ESign",
-  "description": "Browse IPAs from RBx9. Includes one official open-source starter app until more apps are uploaded.",
+  "description": "Browse IPAs from RBx9. Requires your own compatible signing method.",
   "iconURL": "https://rbx9.github.io/icon.png",
   "website": "https://rbx9.github.io/ipa-source/",
   "apps": [
@@ -19,7 +19,7 @@
       "versionDate": "2026-07-05T02:11:53Z",
       "downloadURL": "https://github.com/claration/Feather/releases/download/v2.9.0/Feather.ipa",
       "size": 14241853,
-      "versionDescription": "Official Feather v2.9.0 (sample listing)"
+      "versionDescription": ""
     }
   ]
 }
