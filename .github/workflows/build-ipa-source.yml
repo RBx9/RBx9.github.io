@@ -37,15 +37,24 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
         run: |
           set -euo pipefail
+          # Release assets added after initial publication do not fire a new
+          # published event. When no tag was supplied (for example on push),
+          # automatically import the most recent release containing an IPA.
           if [[ -z "$RELEASE_TAG" ]]; then
-            echo "No release tag provided; regenerate source only."
+            gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" > "$RUNNER_TEMP/releases.json"
+            RELEASE_TAG="$(jq -r '[.[] | select([.assets[].name] | any(endswith(".ipa")))][0].tag_name // empty' "$RUNNER_TEMP/releases.json")"
+          fi
+          if [[ -z "$RELEASE_TAG" ]]; then
+            echo "No releases with .ipa assets found. Rebuilding existing metadata."
             exit 0
           fi
-          if [[ "$RELEASE_TAG" != ipa-* ]]; then
-            echo "Not an IPA release: $RELEASE_TAG. Skipping."
-            exit 0
-          fi
+          echo "Importing IPA assets from release: $RELEASE_TAG"
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/release.json"
+          ipa_count="$(jq '[.assets[].name | select(endswith(".ipa"))] | length' "$RUNNER_TEMP/release.json")"
+          if [[ "$ipa_count" -eq 0 ]]; then
+            echo "::error::Release '$RELEASE_TAG' has no .ipa attached. Upload the .ipa, then rerun this workflow."
+            exit 1
+          fi
           mkdir -p "$RUNNER_TEMP/release-ipas"
           gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/release-ipas" --pattern '*.ipa'
           jq -r '.body // ""' "$RUNNER_TEMP/release.json" > "$RUNNER_TEMP/release-notes.txt"
