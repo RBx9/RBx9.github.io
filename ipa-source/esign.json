@@ -20,6 +20,22 @@
       "downloadURL": "https://github.com/claration/Feather/releases/download/v2.9.0/Feather.ipa",
       "size": 14241853,
       "versionDescription": ""
+    },
+    {
+      "name": "Muvy",
+      "bundleIdentifier": "com.hasanaydins.muvy",
+      "developerName": "RBx9",
+      "subtitle": "Download and sideload this iOS app",
+      "localizedDescription": "Available in the RBx9 IPA Library.",
+      "iconURL": "https://rbx9.github.io/icon.png",
+      "tintColor": "#739AF5",
+      "category": "utilities",
+      "version": "1.2.6",
+      "versionDate": "2026-10-22T07:41:59Z",
+      "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/Muvy_test/Muvy-1.2.6.ipa",
+      "size": 41082481,
+      "versionDescription": "",
+      "minOSVersion": "10.0"
     }
   ]
 }
