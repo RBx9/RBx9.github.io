@@ -66,5 +66,23 @@
         }
       ]
     }
+  },
+  "com.google.ios.youtube": {
+    "name": "YouTube",
+    "developerName": "RBx9",
+    "subtitle": "Download and sideload this iOS app",
+    "localizedDescription": "Available in the RBx9 IPA Library.",
+    "iconURL": "https://rbx9.github.io/icon.png",
+    "category": "utilities",
+    "versions": [
+      {
+        "version": "21.42.4",
+        "buildVersion": "21.42.4",
+        "date": "2026-10-22T08:38:16Z",
+        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/Youtube_6.02b/YouTubePlus_21.42.4_6.0b2.ipa",
+        "size": 149834006,
+        "minOSVersion": "17.0"
+      }
+    ]
   }
 }
