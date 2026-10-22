@@ -33,27 +33,59 @@
     {
       "name": "Stremio",
       "bundleIdentifier": "com.stremio.pal",
-      "developerName": "RBx9",
-      "subtitle": "Download and sideload this iOS app",
-      "localizedDescription": "Available in the RBx9 IPA Library.",
-      "iconURL": "https://rbx9.github.io/icon.png",
-      "tintColor": "#739AF5",
-      "category": "utilities",
+      "developerName": "Stremio",
+      "subtitle": "iPhone & iPad · latest iOS/iPadOS release",
+      "localizedDescription": "Stremio for iOS and iPadOS. The IPA downloads directly from Stremio's CDN; metadata is synced from the unofficial gorlev/stremio-altstore source.",
+      "iconURL": "https://www.stremio.com/website/stremio-logo-small.png",
+      "tintColor": "#7055D9",
+      "category": "entertainment",
+      "screenshots": {
+        "iphone": [
+          "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/6a/ee/19/6aee194d-7b33-aaab-b3bf-64b9773e6120/login.png/1242x2688ss.jpg",
+          "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/8a/9d/46/8a9d46c5-68f5-4396-7e97-a0fdc2e4c99b/7A634238-A47C-4B30-9373-0EDCE5E01D8C.png/1242x2688ss.jpg",
+          "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/e0/3b/96/e03b96c3-e1a5-ad13-b45a-a267cf9860a5/D1DC7867-6EE9-4837-919E-81902FC3344F.png/1242x2688ss.jpg",
+          "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/9d/ec/de/9decdee5-5e8c-4ac8-f213-6cd259ce7eeb/5EA57C1E-F7EC-4C2D-AC9A-771814B51ED4.png/1242x2688ss.jpg"
+        ],
+        "ipad": [
+          {
+            "imageURL": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/71/54/b9/7154b96c-b3e1-148b-0711-b5c26c6dc280/login-ipad.png/2048x2732ss.jpg",
+            "width": 2048,
+            "height": 2732
+          },
+          {
+            "imageURL": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/7d/ae/9c/7dae9cc9-d812-92df-46a3-301fc6b6ce1a/9B597930-50BE-4D8E-AEEC-EEF762C1E768.png/2048x2732ss.jpg",
+            "width": 2048,
+            "height": 2732
+          },
+          {
+            "imageURL": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/76/0d/24/760d2486-cdb1-5935-3d98-f21e695d7151/9A77F888-EADE-4EEB-9549-EDDA02E1BEE3.png/2048x2732ss.jpg",
+            "width": 2048,
+            "height": 2732
+          },
+          {
+            "imageURL": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/40/2b/cd/402bcd56-0df9-17c3-508b-b19540d6205e/D452C7D4-67E6-4AFF-BA25-3DF914C326DA.png/2048x2732ss.jpg",
+            "width": 2048,
+            "height": 2732
+          }
+        ]
+      },
       "versions": [
         {
           "version": "2.1.0",
           "buildVersion": "24",
-          "date": "2026-10-22T08:10:18Z",
-          "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/Stremio_2.10/stremio_iOS.ipa",
+          "date": "2026-10-21",
+          "downloadURL": "https://dl.strem.io/apple/2.1.0b24/ios/stremio_iOS.ipa",
           "size": 84705521,
-          "minOSVersion": "15.0"
+          "minOSVersion": "15.0",
+          "sha256": "8695db7170e8a7e3976556355cf0e27e3834905ab8559d2cc5203fb20e25eef4",
+          "localizedDescription": "New\n\n- Calendar with month navigation and a daily agenda of upcoming episodes.\n- Discover previews: tap a title to see its details inline, with trailer, library, watched and rating actions, without leaving Discover.\n- Add-ons that receive your watch activity now show a warning and ask you to confirm before you install them.\n- Support for foldable iPhones, with adaptive layouts for playback, login, account, profile picker and stream lists that keep content clear of the camera area.\n- Hover, focus and press feedback on posters.\n\nRedesigned\n\n- Settings: grouped by task, with dedicated pages and adaptive sidebar navigation.\n- Title details: richer metadata, new action buttons, artwork that fades into the background and a consistent info line for episodes.\n- Player controls on iOS and macOS, with adaptive layouts, glass styling and refreshed Next Episode and Skip Intro popups.\n- Subtitle menu: picking a language now selects its first subtitle automatically.\n- Subtitle Live Sync (Supporters): cue search, applied delay and cue timing details.\n- Profile picker (Supporters) on iOS.\n- Native menus replace the custom dropdown sheets on iOS and macOS.\n- Poster sizes and loading placeholders now match across all catalogs.\n- Updated add-ons icon in the navigation bar and profile menu.\n\nImprovements\n\n- Discover shows every filter a catalog supports, sizes its filter bar to fit and shows an error when a page fails to load.\n- Discover shows a loading indicator while more titles load and keeps your focus in place.\n- Stream lists tell apart several configured copies of the same add-on.\n- Library keeps its state when you switch tabs and shows a loading state until it's ready.\n- Downloads: better retries and HTTP error handling. Resuming works correctly after a cancel, and storage cleanup only touches downloads.\n- Settings stays in sync with the app: external player choices, Low Data Mode status and stream filter presets.\n- Settings shows subtitle opacity as a percentage, rows show their current value, and only player options your device supports are listed.\n- Your seek duration setting is now used everywhere, including hold-to-seek.\n- Cinemeta configuration opens inside the app.\n- Faster title details, stream lists, player and subtitle rendering.\n- On iPad and Mac, selecting the current sidebar item again behaves like tapping the current tab.\n- On iPad, action menus open from the button you tapped.\n- Larger close buttons, toolbars that follow the app's tint, and chip rows that fade out at the edges.\n\nFixes\n\n- Subtitles: fixed overlapping cues, automatic track selection (including embedded tracks), style changes not applying, format detection, handling of broken files and duplicate subtitle entries.\n- More reliable video file matching for subtitles.\n- Audio fallback now respects your secondary language preference.\n- Catalog titles no longer repeat across pages.\n- Fixed Discover filters, catalog links, navigation state and scroll position when you open a new catalog.\n- Player: fixed it reporting ready too early, wrong loading transitions, timeline marker positions, native player presentation, the navigation bar showing during playback and back button spacing on iPhone. Also fixed the Next Episode popup on narrow screens and leftover screens after closing the player.\n- External players no longer leave stale callbacks behind after playback.\n- No more misleading error messages while offline, and better handling of library sync errors.\n- Login: fixed placeholders, the password visibility toggle, keyboard focus, cancelling link login and the sign-in button position on Mac.\n- Opening an episode directly keeps series navigation, and episode progress bars are correct.\n- Spoiler episode thumbnails stay blurred.\n- Fixed where catalog loading rows appear, the watched indicator overlapping badges and poster selection sticking after a tap on iPhone.\n- Settings: fixed layout after rotation on iPad, dropdown sizing and rows collapsing with an avatar.\n- Fixed tool\n\n(truncated)"
         }
       ],
       "version": "2.1.0",
-      "versionDate": "2026-10-22T08:10:18Z",
-      "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/Stremio_2.10/stremio_iOS.ipa",
+      "versionDate": "2026-10-21",
+      "downloadURL": "https://dl.strem.io/apple/2.1.0b24/ios/stremio_iOS.ipa",
       "size": 84705521,
-      "versionDescription": "",
+      "versionDescription": "New\n\n- Calendar with month navigation and a daily agenda of upcoming episodes.\n- Discover previews: tap a title to see its details inline, with trailer, library, watched and rating actions, without leaving Discover.\n- Add-ons that receive your watch activity now show a warning and ask you to confirm before you install them.\n- Support for foldable iPhones, with adaptive layouts for playback, login, account, profile picker and stream lists that keep content clear of the camera area.\n- Hover, focus and press feedback on posters.\n\nRedesigned\n\n- Settings: grouped by task, with dedicated pages and adaptive sidebar navigation.\n- Title details: richer metadata, new action buttons, artwork that fades into the background and a consistent info line for episodes.\n- Player controls on iOS and macOS, with adaptive layouts, glass styling and refreshed Next Episode and Skip Intro popups.\n- Subtitle menu: picking a language now selects its first subtitle automatically.\n- Subtitle Live Sync (Supporters): cue search, applied delay and cue timing details.\n- Profile picker (Supporters) on iOS.\n- Native menus replace the custom dropdown sheets on iOS and macOS.\n- Poster sizes and loading placeholders now match across all catalogs.\n- Updated add-ons icon in the navigation bar and profile menu.\n\nImprovements\n\n- Discover shows every filter a catalog supports, sizes its filter bar to fit and shows an error when a page fails to load.\n- Discover shows a loading indicator while more titles load and keeps your focus in place.\n- Stream lists tell apart several configured copies of the same add-on.\n- Library keeps its state when you switch tabs and shows a loading state until it's ready.\n- Downloads: better retries and HTTP error handling. Resuming works correctly after a cancel, and storage cleanup only touches downloads.\n- Settings stays in sync with the app: external player choices, Low Data Mode status and stream filter presets.\n- Settings shows subtitle opacity as a percentage, rows show their current value, and only player options your device supports are listed.\n- Your seek duration setting is now used everywhere, including hold-to-seek.\n- Cinemeta configuration opens inside the app.\n- Faster title details, stream lists, player and subtitle rendering.\n- On iPad and Mac, selecting the current sidebar item again behaves like tapping the current tab.\n- On iPad, action menus open from the button you tapped.\n- Larger close buttons, toolbars that follow the app's tint, and chip rows that fade out at the edges.\n\nFixes\n\n- Subtitles: fixed overlapping cues, automatic track selection (including embedded tracks), style changes not applying, format detection, handling of broken files and duplicate subtitle entries.\n- More reliable video file matching for subtitles.\n- Audio fallback now respects your secondary language preference.\n- Catalog titles no longer repeat across pages.\n- Fixed Discover filters, catalog links, navigation state and scroll position when you open a new catalog.\n- Player: fixed it reporting ready too early, wrong loading transitions, timeline marker positions, native player presentation, the navigation bar showing during playback and back button spacing on iPhone. Also fixed the Next Episode popup on narrow screens and leftover screens after closing the player.\n- External players no longer leave stale callbacks behind after playback.\n- No more misleading error messages while offline, and better handling of library sync errors.\n- Login: fixed placeholders, the password visibility toggle, keyboard focus, cancelling link login and the sign-in button position on Mac.\n- Opening an episode directly keeps series navigation, and episode progress bars are correct.\n- Spoiler episode thumbnails stay blurred.\n- Fixed where catalog loading rows appear, the watched indicator overlapping badges and poster selection sticking after a tap on iPhone.\n- Settings: fixed layout after rotation on iPad, dropdown sizing and rows collapsing with an avatar.\n- Fixed tool\n\n(truncated)",
       "minOSVersion": "15.0"
     }
   ],
