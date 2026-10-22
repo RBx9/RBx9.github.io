@@ -81,6 +81,40 @@ def add(args):
     render()
     print("Added", details["name"], release["version"])
 
+def prune(args):
+    """Remove deleted GitHub Release assets from this repository's app catalog.
+
+    External hosted IPAs are not touched.
+    """
+    releases = json.loads(Path(args.releases_json).read_text(encoding="utf-8"))
+    if not isinstance(releases, list):
+        raise ValueError("Expected GitHub releases JSON array")
+    valid_urls = {
+        asset["browser_download_url"]
+        for release in releases
+        for asset in release.get("assets", [])
+        if asset.get("browser_download_url")
+    }
+    release_prefix = "https://github.com/" + args.repository + "/releases/download/"
+    catalog = load()
+    removed = []
+    for bundle, app in list(catalog.items()):
+        old_versions = app.get("versions") or []
+        keep_versions = [
+            version for version in old_versions
+            if not str(version.get("downloadURL", "")).startswith(release_prefix)
+            or version["downloadURL"] in valid_urls
+        ]
+        if len(old_versions) > len(keep_versions):
+            removed.append(app.get("name", bundle))
+        if keep_versions:
+            app["versions"] = keep_versions
+        else:
+            del catalog[bundle]
+    write(CATALOG, catalog)
+    print("Pruned missing release assets:", ", ".join(removed) or "none")
+
+
 def render():
     universal_apps = []
     for bundle, meta in sorted(load().items(), key=lambda pair: pair[1].get("name", "").lower()):
@@ -137,6 +171,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("render")
+    prune_parser = sub.add_parser("prune")
+    prune_parser.add_argument("--releases-json", required=True)
+    prune_parser.add_argument("--repository", required=True)
     add_parser = sub.add_parser("add")
     add_parser.add_argument("--ipa", required=True)
     add_parser.add_argument("--url", required=True)
@@ -144,7 +181,12 @@ if __name__ == "__main__":
     add_parser.add_argument("--notes-file", default="")
     args = parser.parse_args()
     try:
-        add(args) if args.command == "add" else render()
+        if args.command == "add":
+            add(args)
+        elif args.command == "prune":
+            prune(args)
+        else:
+            render()
     except (OSError, ValueError, zipfile.BadZipFile) as exc:
         print("Source generation failed:", exc, file=sys.stderr)
         sys.exit(1)
