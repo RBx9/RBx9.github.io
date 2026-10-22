@@ -63,6 +63,22 @@ def sync(source_file, catalog_file):
     if not isinstance(catalog, dict):
         raise ValueError("Source catalog is not an object")
 
+    # Never downgrade if the upstream mirror temporarily serves a stale index.
+    previous = catalog.get(STREMIO_ID, {}).get("versions") or []
+    if previous:
+        previous_version = previous[0]
+        current_rank = (
+            numeric_version(previous_version.get("version", "0.0")),
+            int(str(previous_version.get("buildVersion", "0")))
+        )
+        new_rank = (
+            numeric_version(latest["version"]),
+            int(str(latest.get("buildVersion", "0")))
+        )
+        if new_rank < current_rank:
+            print("Skipping stale upstream Stremio entry:", latest["version"])
+            return
+
     latest_version = {
         key: latest[key]
         for key in ("version", "buildVersion", "date", "downloadURL", "size",
