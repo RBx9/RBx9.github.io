@@ -1,6 +1,9 @@
 name: Publish Feather and ESign IPA Sources
 
 on:
+  # Mirror upstream Stremio metadata four times per day; no IPA downloads.
+  schedule:
+    - cron: '21 */6 * * *'
   release:
     types: [published, edited, deleted]
   push:
@@ -8,6 +11,7 @@ on:
     paths:
       - 'ipa-source/catalog.json'
       - 'ipa-source/scripts/repo_manager.py'
+      - 'ipa-source/scripts/sync_stremio.py'
       - '.github/workflows/build-ipa-source.yml'
   workflow_dispatch:
     inputs:
@@ -42,15 +46,10 @@ jobs:
             echo 'A release was deleted; skip import and prune old listings.'
             exit 0
           fi
-          # Release assets added after initial publication do not fire a new
-          # published event. When no tag was supplied (for example on push),
-          # automatically import the most recent release containing an IPA.
+          # A push or scheduled Stremio refresh should never re-import the
+          # last local GitHub Release and overwrite the CDN-linked entry.
           if [[ -z "$RELEASE_TAG" ]]; then
-            gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" > "$RUNNER_TEMP/releases.json"
-            RELEASE_TAG="$(jq -r '[.[] | select([.assets[].name] | any(endswith(".ipa")))][0].tag_name // empty' "$RUNNER_TEMP/releases.json")"
-          fi
-          if [[ -z "$RELEASE_TAG" ]]; then
-            echo "No releases with .ipa assets found. Rebuilding existing metadata."
+            echo "No explicit release to import. Rebuilding the existing catalog."
             exit 0
           fi
           echo "Importing IPA assets from release: $RELEASE_TAG"
@@ -84,6 +83,17 @@ jobs:
           set -euo pipefail
           gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -s 'add // []' > "$RUNNER_TEMP/all-releases.json"
           python3 ipa-source/scripts/repo_manager.py prune --releases-json "$RUNNER_TEMP/all-releases.json" --repository "$GITHUB_REPOSITORY"
+      - name: Sync latest upstream Stremio for iPhone and iPad
+        if: github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLSs --retry 3 --retry-delay 3 --connect-timeout 15 --max-time 90 \
+            "https://gorlev.github.io/stremio-altstore/stremio-ios.json" \
+            -o "$RUNNER_TEMP/stremio-ios-upstream.json"
+          python3 ipa-source/scripts/sync_stremio.py \
+            --source "$RUNNER_TEMP/stremio-ios-upstream.json"
+
       - name: Generate source files
         run: python3 ipa-source/scripts/repo_manager.py render
       - name: Commit updated IPA catalog
