@@ -49,7 +49,7 @@ for index, stanza in enumerate(stanzas):
         # Sileo uses the depiction URL to show screenshots and richer details.
         fields = [line for line in fields if not line.startswith(("Depiction: ", "SileoDepiction: "))]
         fields = [
-            "Description: DuoBar (RootHide) - iOS 16 circular battery/Wi-Fi/cellular icon, hotspot and Control Center fixes, adjustable size, transparent Settings icon and bug reporting."
+            "Description: DuoBar (RootHide) - iOS 16 combined battery/Wi-Fi/cellular indicator, adjustable size, Control Center fixes, and improvements."
             if line.startswith("Description: ") else line for line in fields
         ]
         fields.append("Depiction: https://rbx9.github.io/depictions/duobar-v2.html")
@@ -59,7 +59,7 @@ for index, stanza in enumerate(stanzas):
         # Keep Rootless metadata and depiction separate from the RootHide edition.
         fields = [line for line in fields if not line.startswith(("Name: ", "Depiction: ", "SileoDepiction: "))]
         fields = [
-            "Description: DuoBar (Rootless) - iOS 16 Rootless build with size slider, Personal Hotspot, Control Center fixes, transparent Settings icon and bug reports. Device testing pending."
+            "Description: DuoBar (Rootless) - iOS 16 combined battery/Wi-Fi/cellular indicator, size slider, Control Center fixes, and improvements. Device testing pending."
             if line.startswith("Description: ") else line for line in fields
         ]
         fields.append("Name: DuoBar (Rootless)")
