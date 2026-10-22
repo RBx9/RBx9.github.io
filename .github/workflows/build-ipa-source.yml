@@ -1,0 +1,88 @@
+name: Publish Feather and ESign IPA Sources
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+    paths:
+      - 'ipa-source/catalog.json'
+      - 'ipa-source/scripts/repo_manager.py'
+      - '.github/workflows/build-ipa-source.yml'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing IPA release tag to import or re-import'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rbx9-ipa-source-index
+  cancel-in-progress: false
+
+jobs:
+  update-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Import IPA assets from release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$RELEASE_TAG" ]]; then
+            echo "No release tag provided; regenerate source only."
+            exit 0
+          fi
+          if [[ "$RELEASE_TAG" != ipa-* ]]; then
+            echo "Not an IPA release: $RELEASE_TAG. Skipping."
+            exit 0
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/release.json"
+          mkdir -p "$RUNNER_TEMP/release-ipas"
+          gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/release-ipas" --pattern '*.ipa'
+          jq -r '.body // ""' "$RUNNER_TEMP/release.json" > "$RUNNER_TEMP/release-notes.txt"
+          release_date="$(jq -r '.published_at // .created_at' "$RUNNER_TEMP/release.json")"
+          shopt -s nullglob
+          ipas=("$RUNNER_TEMP"/release-ipas/*.ipa)
+          if (( ${#ipas[@]} == 0 )); then
+            echo "No .ipa found; add an .ipa asset and rerun this workflow." >&2
+            exit 1
+          fi
+          for ipa in "${ipas[@]}"; do
+            filename="$(basename "$ipa")"
+            url="$(jq -r --arg name "$filename" '.assets[] | select(.name==$name) | .browser_download_url' "$RUNNER_TEMP/release.json")"
+            test -n "$url" && test "$url" != null
+            python3 ipa-source/scripts/repo_manager.py add --ipa "$ipa" --url "$url" --date "$release_date" --notes-file "$RUNNER_TEMP/release-notes.txt"
+          done
+      - name: Generate source files
+        run: python3 ipa-source/scripts/repo_manager.py render
+      - name: Commit updated IPA catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ipa-source/catalog.json ipa-source/source.json ipa-source/esign.json
+          if git diff --cached --quiet; then
+            echo 'Source is already up to date'
+            exit 0
+          fi
+          git commit -m 'Update Feather and ESign IPA catalogs'
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 3
+          done
+          echo 'Could not push source after 5 attempts' >&2
+          exit 1
