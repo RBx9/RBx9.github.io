@@ -44,6 +44,26 @@
           "minOSVersion": "10.0"
         }
       ]
+    },
+    {
+      "name": "Stremio",
+      "bundleIdentifier": "com.stremio.pal",
+      "developerName": "RBx9",
+      "subtitle": "Download and sideload this iOS app",
+      "localizedDescription": "Available in the RBx9 IPA Library.",
+      "iconURL": "https://rbx9.github.io/icon.png",
+      "tintColor": "#739AF5",
+      "category": "utilities",
+      "versions": [
+        {
+          "version": "2.1.0",
+          "buildVersion": "24",
+          "date": "2026-10-22T08:10:18Z",
+          "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/Stremio_2.10/stremio_iOS.ipa",
+          "size": 84705521,
+          "minOSVersion": "15.0"
+        }
+      ]
     }
   ],
   "news": []
