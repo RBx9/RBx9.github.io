@@ -82,7 +82,7 @@ def add(args):
     print("Added", details["name"], release["version"])
 
 def render():
-    feather_apps, esign_apps = [], []
+    universal_apps = []
     for bundle, meta in sorted(load().items(), key=lambda pair: pair[1].get("name", "").lower()):
         versions = sorted(meta.get("versions") or [], key=lambda v: v["date"], reverse=True)
         if not versions:
@@ -103,10 +103,12 @@ def render():
         }
         if meta.get("screenshots"):
             app["screenshots"] = meta["screenshots"]
-        feather_apps.append({**app, "versions": versions})
         latest = versions[0]
-        esign_apps.append({
-            **app, "version": latest["version"], "versionDate": latest["date"],
+        # Combined schema: version history for Feather, plus flat latest-version
+        # fields for ESign and other AltStore-compatible signing apps.
+        universal_apps.append({
+            **app, "versions": versions,
+            "version": latest["version"], "versionDate": latest["date"],
             "downloadURL": latest["downloadURL"], "size": latest["size"],
             "versionDescription": latest.get("localizedDescription", ""),
             **({"minOSVersion": latest["minOSVersion"]} if latest.get("minOSVersion") else {})
@@ -117,15 +119,19 @@ def render():
         "description": "Browse IPAs from RBx9. Requires your own compatible signing method.",
         "iconURL": ICON, "website": ROOT + "/"
     }
-    feather_source = {**common, "sourceURL": "https://rbx9.github.io/ipa/", "apps": feather_apps, "news": []}
-    esign_source = {**common, "apps": esign_apps}
-    # Keep legacy .json URLs while supporting clean directory URLs without .json.
-    # Feather parses JSON from the /ipa/ directory index.html response body.
-    write(BASE / "source.json", feather_source)
-    write(BASE / "esign.json", esign_source)
-    write(BASE.parent / "ipa/index.html", feather_source)
-    write(BASE.parent / "esign/index.html", esign_source)
-    print("Generated", len(feather_apps), "app entries across legacy and clean URLs")
+    # One AltStore-compatible source for Feather and ESign.
+    unified_source = {
+        **common,
+        "sourceURL": "https://rbx9.github.io/ipa/",
+        "apps": universal_apps,
+        "news": []
+    }
+    # Legacy URLs stay working and contain the identical universal feed.
+    for filename in ("source.json", "esign.json"):
+        write(BASE / filename, unified_source)
+    for directory in ("ipa", "esign"):
+        write(BASE.parent / directory / "index.html", unified_source)
+    print("Generated", len(universal_apps), "universal app entries")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
