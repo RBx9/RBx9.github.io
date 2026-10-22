@@ -1,0 +1,9 @@
+{
+  "name": "RBx9 IPA Library",
+  "identifier": "com.rbx9.ipa.library",
+  "subtitle": "iOS applications for Feather and ESign",
+  "description": "Browse IPAs distributed by RBx9. Signing and installation require your own compatible certificate or signing method.",
+  "iconURL": "https://rbx9.github.io/icon.png",
+  "website": "https://rbx9.github.io/ipa-source/",
+  "apps": []
+}
