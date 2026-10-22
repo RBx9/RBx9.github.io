@@ -94,6 +94,10 @@ jobs:
           python3 ipa-source/scripts/sync_stremio.py \
             --source "$RUNNER_TEMP/stremio-ios-upstream.json"
 
+      - name: Resolve app icons for new IPA uploads
+        shell: bash
+        run: python3 ipa-source/scripts/repo_manager.py sync-icons --force-bundle com.google.ios.youtube
+
       - name: Generate source files
         run: python3 ipa-source/scripts/repo_manager.py render
       - name: Commit updated IPA catalog
