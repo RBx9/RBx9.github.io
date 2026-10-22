@@ -1,17 +1,17 @@
 Package: local.duobar
-Version: 0.2.6
+Version: 0.2.7
 Architecture: iphoneos-arm64e
 Maintainer: RBx9
 Installed-Size: 516
 Depends: mobilesubstrate, preferenceloader, firmware (>= 16.0), firmware (<< 17.0)
-Filename: debs/DuoBar_0.2.6_RootHide.deb
-Size: 108870
-MD5sum: 0ec3ba6d85cf66fac8cde2a59a090d4f
-SHA1: f90e322e5e8e785597c47d34aafadb0c0bfc041c
-SHA256: 5da13a4e258dd3ce7df8feac96e7ec028471a0b2321e256ca88f7420e5975cdb
+Filename: debs/DuoBar_0.2.7_RootHide.deb
+Size: 108986
+MD5sum: 2aae2fb0571f9ee44537a16a6c267ac9
+SHA1: 369386e9b045f1ccc41c44d2cfcb5899610c4100
+SHA256: 47374bc87323021311845e3d2720f3e3a322ab71aae0a4fe873b254ad4efbf85
 Section: Tweaks
 Homepage: https://twitter.com/RedaBuali
-Description: DuoBar (RootHide) - iOS 16 circular battery/Wi-Fi/cellular icon, hotspot and Control Center fixes, adjustable size, transparent Settings icon and bug reporting.
+Description: DuoBar (RootHide) - iOS 16 combined battery/Wi-Fi/cellular indicator, adjustable size, Control Center fixes, and improvements.
  A circular battery ring with a live percentage, Wi-Fi strength and four cellular signal dots.
  Includes charging and Low Power Mode colors, light and dark styling, an adjustable size slider, and an on/off switch in Settings.
  Developed by RBx9. Twitter: @RedaBuali.
@@ -22,20 +22,20 @@ Depiction: https://rbx9.github.io/depictions/duobar-v2.html
 SileoDepiction: https://rbx9.github.io/depictions/duobar-v2.json
 
 Package: local.duobar.rootless
-Version: 0.2.6
+Version: 0.2.7
 Architecture: iphoneos-arm64
 Maintainer: RBx9
-Installed-Size: 292
+Installed-Size: 516
 Depends: mobilesubstrate, preferenceloader, firmware (>= 16.0), firmware (<< 17.0)
 Conflicts: local.duobar
-Filename: debs/DuoBar_0.2.6_Rootless.deb
-Size: 96836
-MD5sum: 2f0d8e1e8dd8cfd05bbbc5e6a3896d2a
-SHA1: 86328e5273934b275024e1d29a697d9bef361635
-SHA256: 3c7fa49849f08e173c25885e99759fbffbecb9723e76dcf1e19a01f458cd432b
+Filename: debs/DuoBar_0.2.7_Rootless.deb
+Size: 109142
+MD5sum: 47ad5276ef9a575aae601a731e1e57f2
+SHA1: de52fe8d204719fcac63bd7da0ae75bfc6868554
+SHA256: 2682f410a44611bb5203552594f64ae9dc552ddb358ddca60556b9def7285d77
 Section: Tweaks
 Homepage: https://github.com/RBx9/DuoBar
-Description: DuoBar (Rootless) - iOS 16 Rootless build with size slider, Personal Hotspot, Control Center fixes, transparent Settings icon and bug reports. Device testing pending.
+Description: DuoBar (Rootless) - iOS 16 combined battery/Wi-Fi/cellular indicator, size slider, Control Center fixes, and improvements. Device testing pending.
  Includes a live adjustable 70%-140% size slider, Settings integration,
  charging and Low Power Mode colors, and Control Center layout improvements.
  Includes hotspot/Control Center fixes and Settings bug reports.
