@@ -92,11 +92,11 @@
       "name": "YouTube",
       "bundleIdentifier": "com.google.ios.youtube",
       "developerName": "RBx9",
-      "subtitle": "Download and sideload this iOS app",
+      "subtitle": "YouTubePlus · sideloadable YouTube",
       "localizedDescription": "Available in the RBx9 IPA Library.",
-      "iconURL": "https://rbx9.github.io/icon.png",
+      "iconURL": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/9d/cc/4d/9dcc4d29-3199-cfdb-da1e-64ec30a4046b/logo_youtube_2024_q4_color-0-0-1x_U007emarketing-0-0-0-7-0-0-0-85-220.png/512x512bb.jpg",
       "tintColor": "#739AF5",
-      "category": "utilities",
+      "category": "photo-video",
       "versions": [
         {
           "version": "21.42.4",
