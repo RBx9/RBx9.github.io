@@ -13,28 +13,40 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Check public Sileo source files
+      - name: Check public Sileo source files and indexed .deb packages
         shell: bash
         run: |
           set -euo pipefail
-          for path in Release Packages Packages.gz debs/DuoBar_0.2.0_RootHide.deb; do
-            echo "::group::Checking https://rbx9.github.io/$path"
-            curl -fLSs --retry 4 --retry-delay 3 --connect-timeout 15 --max-time 60 \
-              -D /tmp/headers -o /tmp/file \
-              -w 'STATUS:%{http_code} CONTENT_TYPE:%{content_type} BYTES:%{size_download} FINAL_URL:%{url_effective}\n' \
-              "https://rbx9.github.io/$path"
-            head -n 20 /tmp/headers
-            if [[ "$path" == Release ]]; then
-              sed -n '1,18p' /tmp/file
-              grep -qx 'Components: main' /tmp/file
-              grep -qx 'Origin: RBx9' /tmp/file
-            elif [[ "$path" == Packages ]]; then
-              sed -n '1,21p' /tmp/file
-              grep -qx 'Package: local.duobar' /tmp/file
-            elif [[ "$path" == Packages.gz ]]; then
-              gzip -t /tmp/file
-            elif [[ "$path" == *.deb ]]; then
-              echo '6e50eb08bbf7babb3996504c23bb1d22b4e97d542e1809fec64eb43458f80781  /tmp/file' | sha256sum --check
-            fi
+          base='https://rbx9.github.io'
+          for path in Release Packages Packages.gz; do
+            echo "::group::Checking $base/$path"
+            curl -fLSs --retry 4 --retry-delay 3 --connect-timeout 15 --max-time 90 "$base/$path" -o "/tmp/$(basename "$path")"
             echo "::endgroup::"
           done
+          grep -qx 'Components: main' /tmp/Release
+          grep -qx 'Origin: RBx9' /tmp/Release
+          gzip -t /tmp/Packages.gz
+          diff -u /tmp/Packages <(gzip -dc /tmp/Packages.gz)
+          grep -q '^Package: local.duobar' /tmp/Packages
+
+          # Read real filenames and SHA256 hashes from the current APT index.
+          # This prevents false failures after DuoBar receives an update.
+          awk '
+            /^Filename: / {file=$2}
+            /^SHA256: / {
+              if (file != "") {
+                print file, $2
+                file=""
+              }
+            }
+          ' /tmp/Packages > /tmp/indexed-debs
+          test -s /tmp/indexed-debs
+
+          while read -r filename checksum; do
+            [[ "$filename" == debs/*.deb ]] || { echo "Unexpected path: $filename" >&2; exit 1; }
+            [[ "$checksum" =~ ^[a-fA-F0-9]{64}$ ]] || { echo "Invalid sha256: $filename" >&2; exit 1; }
+            echo "::group::Checking $base/$filename"
+            curl -fLSs --retry 4 --retry-delay 3 --connect-timeout 15 --max-time 90 "$base/$filename" -o /tmp/check.deb
+            echo "$checksum  /tmp/check.deb" | sha256sum --check
+            echo "::endgroup::"
+          done < /tmp/indexed-debs
