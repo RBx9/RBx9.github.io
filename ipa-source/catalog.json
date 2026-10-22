@@ -1,1 +1,19 @@
-{}
+{
+  "thewonderofyou.Feather": {
+    "name": "Feather",
+    "developerName": "Samara (Feather developer)",
+    "subtitle": "Official open-source app · starter listing",
+    "localizedDescription": "Official Feather on-device IPA signing app. This is a starter listing so you can add the RBx9 source before uploading your own apps. The download is from Feather's official GitHub release.",
+    "iconURL": "https://raw.githubusercontent.com/claration/Feather/main/Feather/Resources/Assets.xcassets/AppIcon.appiconset/feather.png",
+    "tintColor": "#848EF9",
+    "category": "utilities",
+    "versions": [
+      {
+        "version": "2.9.0",
+        "date": "2026-07-05T02:11:53Z",
+        "downloadURL": "https://github.com/claration/Feather/releases/download/v2.9.0/Feather.ipa",
+        "size": 14241853
+      }
+    ]
+  }
+}
