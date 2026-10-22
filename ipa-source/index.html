@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0d1321">
+<meta name="description" content="RBx9 IPA Library — add the source to Feather or ESign">
+<link rel="icon" href="https://rbx9.github.io/icon.png">
+<title>RBx9 IPA Library · Feather &amp; ESign</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--card:#172139;--border:#33435d;--text:#f4f7ff;--muted:#adbcd5;--accent:#9ebaff}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 80% 0,#273f74,transparent 56%),var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+main{width:min(850px,100%);margin:auto;padding:62px 22px 80px}
+h1{font-size:clamp(2.4rem,7vw,4rem);margin:15px 0;letter-spacing:-.05em;line-height:1.05}
+.eyebrow{font-weight:750;font-size:.8rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.lead{color:var(--muted);line-height:1.65;max-width:630px;font-size:1.12rem;margin-bottom:30px}
+.panel{padding:25px;margin:16px 0;background:var(--card);border:1px solid var(--border);border-radius:20px}
+h2{margin:0 0 15px;font-size:1.22rem}
+.url{font-family:ui-monospace,SFMono-Regular,monospace;color:#c4d5ff;overflow-wrap:anywhere;font-size:.91rem}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+a.btn,button.btn{background:var(--accent);border:0;border-radius:10px;padding:12px 17px;font-weight:750;font-size:.94rem;color:#0a1326;text-decoration:none;cursor:pointer}
+.btn.secondary{background:#2d3d60;color:var(--text)}
+.hint{color:var(--muted);font-size:.92rem;line-height:1.6}
+.app{display:flex;align-items:center;gap:14px;padding:15px 0;border-top:1px solid var(--border)}
+.app img{width:52px;height:52px;object-fit:cover;border-radius:13px;background:#fff}
+.app b{display:block;margin-bottom:5px}
+.app small{color:var(--muted)}
+footer{margin-top:40px;border-top:1px solid var(--border);padding-top:20px;color:var(--muted);font-size:.89rem;line-height:1.6}
+a{color:#bcd0ff}
+</style>
+</head>
+<body><main>
+<div class="eyebrow">Public iOS sideloading source</div>
+<h1>RBx9 IPA Library</h1>
+<p class="lead">Discover and download IPA apps from one source. Add it to Feather or ESign, then refresh whenever new apps or updates are published.</p>
+<section class="panel">
+<h2>Feather source</h2>
+<div class="url" id="feather">https://rbx9.github.io/ipa-source/source.json</div>
+<div class="actions"><a class="btn" href="feather://source/https://rbx9.github.io/ipa-source/source.json">Open in Feather</a><button class="btn secondary" data-copy="feather">Copy source link</button></div>
+<p class="hint">Or go to Feather → Sources → + and paste the link.</p>
+</section>
+<section class="panel">
+<h2>ESign source</h2>
+<div class="url" id="esign">https://rbx9.github.io/ipa-source/esign.json</div>
+<div class="actions"><button class="btn" data-copy="esign">Copy source link</button></div>
+<p class="hint">Go to ESign → App Sources (location can vary with app version) and add the link.</p>
+</section>
+<section class="panel">
+<h2>Available apps <span id="count"></span></h2>
+<div id="apps"><p class="hint">Loading app catalog…</p></div>
+</section>
+<footer>Made by RBx9 · <a href="https://github.com/RBx9/RBx9.github.io/tree/main/ipa-source">Source &amp; upload instructions</a> · <a href="https://rbx9.github.io/">Sileo tweak repository</a><p>Downloads are unsigned IPAs. Users need a compatible signing method. Install only apps you trust.</p></footer>
+</main>
+<script>
+document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",async()=>{
+ const old=b.textContent;
+ try{await navigator.clipboard.writeText(document.getElementById(b.dataset.copy).textContent.trim());b.textContent="Copied!"}
+ catch{b.textContent="Select and copy link above"}
+ setTimeout(()=>b.textContent=old,2200);
+}));
+(async()=>{
+ const box=document.getElementById("apps");
+ try{
+  const r=await fetch("source.json",{cache:"no-cache"});if(!r.ok)throw Error("fetch failed");
+  const data=await r.json(),apps=Array.isArray(data.apps)?data.apps:[];
+  document.getElementById("count").textContent="("+apps.length+")";
+  box.replaceChildren();
+  if(!apps.length){const p=document.createElement("p");p.className="hint";p.textContent="This library is ready. Apps appear after the first IPA release is published.";box.append(p)}
+  for(const a of apps){
+   const row=document.createElement("div");row.className="app";
+   const img=document.createElement("img");img.src=a.iconURL||"https://rbx9.github.io/icon.png";img.alt="";
+   const details=document.createElement("div"),title=document.createElement("b"),sub=document.createElement("small");
+   title.textContent=a.name||"iOS App";
+   sub.textContent=[a.subtitle,(a.versions||[])[0]?.version&&"v"+a.versions[0].version].filter(Boolean).join(" · ");
+   details.append(title,sub);row.append(img,details);box.append(row);
+  }
+ }catch{const p=document.createElement("p");p.className="hint";p.textContent="The app list is temporarily unavailable. The source URLs above can still be copied.";box.replaceChildren(p)}
+})();
+</script>
+</body></html>
