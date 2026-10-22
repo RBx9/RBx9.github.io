@@ -22,6 +22,7 @@ def load():
     return value
 
 def write(path, obj):
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 def info_from_ipa(path):
@@ -116,9 +117,15 @@ def render():
         "description": "Browse IPAs from RBx9. Requires your own compatible signing method.",
         "iconURL": ICON, "website": ROOT + "/"
     }
-    write(BASE / "source.json", {**common, "sourceURL": ROOT + "/source.json", "apps": feather_apps, "news": []})
-    write(BASE / "esign.json", {**common, "apps": esign_apps})
-    print("Generated", len(feather_apps), "app entries")
+    feather_source = {**common, "sourceURL": "https://rbx9.github.io/ipa/", "apps": feather_apps, "news": []}
+    esign_source = {**common, "apps": esign_apps}
+    # Keep legacy .json URLs while supporting clean directory URLs without .json.
+    # Feather parses JSON from the /ipa/ directory index.html response body.
+    write(BASE / "source.json", feather_source)
+    write(BASE / "esign.json", esign_source)
+    write(BASE.parent / "ipa/index.html", feather_source)
+    write(BASE.parent / "esign/index.html", esign_source)
+    print("Generated", len(feather_apps), "app entries across legacy and clean URLs")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
