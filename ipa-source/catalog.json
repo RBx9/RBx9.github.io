@@ -16,24 +16,6 @@
       }
     ]
   },
-  "com.hasanaydins.muvy": {
-    "name": "Muvy",
-    "developerName": "RBx9",
-    "subtitle": "Download and sideload this iOS app",
-    "localizedDescription": "Available in the RBx9 IPA Library.",
-    "iconURL": "https://rbx9.github.io/icon.png",
-    "category": "utilities",
-    "versions": [
-      {
-        "version": "1.2.6",
-        "buildVersion": "42",
-        "date": "2026-10-22T08:03:12Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/Muvy_test/Muvy-1.2.6.ipa",
-        "size": 41082481,
-        "minOSVersion": "10.0"
-      }
-    ]
-  },
   "com.stremio.pal": {
     "name": "Stremio",
     "developerName": "RBx9",
