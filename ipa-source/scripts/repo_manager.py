@@ -7,6 +7,8 @@ from pathlib import Path
 import plistlib
 import sys
 import zipfile
+from urllib.parse import urlencode, urlparse
+from urllib.request import Request, urlopen
 
 BASE = Path(__file__).resolve().parent.parent
 CATALOG = BASE / "catalog.json"
@@ -80,6 +82,48 @@ def add(args):
     write(CATALOG, catalog)
     render()
     print("Added", details["name"], release["version"])
+
+def sync_icons(args):
+    """Resolve app artwork for App Store bundle IDs while preserving custom art.
+
+    Native Assets.car icons inside IPA packages are not readable with plistlib
+    on Linux. Apple's Lookup API is a best-effort alternative.
+    """
+    catalog = load()
+    dirty = False
+    for bundle, app in catalog.items():
+        current = app.get("iconURL")
+        if current and current != ICON and bundle != args.force_bundle:
+            continue
+        try:
+            request_url = "https://itunes.apple.com/lookup?" + urlencode({
+                "bundleId": bundle, "country": "us", "entity": "software"
+            })
+            request = Request(request_url, headers={
+                "User-Agent": "RBx9-IPA-Catalog/1.0",
+                "Accept": "application/json"
+            })
+            with urlopen(request, timeout=12) as response:
+                payload = response.read(1024 * 1024)
+            rows = json.loads(payload).get("results", [])
+            matches = [
+                row for row in rows
+                if row.get("bundleId", "").lower() == bundle.lower()
+            ]
+            artwork = (matches[0].get("artworkUrl512") or
+                       matches[0].get("artworkUrl100")) if matches else None
+            if not artwork or urlparse(artwork).scheme != "https":
+                print("No matching App Store artwork for", bundle)
+                continue
+            if artwork != current:
+                app["iconURL"] = artwork
+                dirty = True
+                print("Found app icon for", bundle)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            print("App icon lookup unavailable for", bundle, type(exc).__name__)
+    if dirty:
+        write(CATALOG, catalog)
+
 
 def prune(args):
     """Remove deleted GitHub Release assets from this repository's app catalog.
@@ -171,6 +215,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("render")
+    icon_parser = sub.add_parser("sync-icons")
+    icon_parser.add_argument("--force-bundle", default="")
     prune_parser = sub.add_parser("prune")
     prune_parser.add_argument("--releases-json", required=True)
     prune_parser.add_argument("--repository", required=True)
@@ -185,6 +231,8 @@ if __name__ == "__main__":
             add(args)
         elif args.command == "prune":
             prune(args)
+        elif args.command == "sync-icons":
+            sync_icons(args)
         else:
             render()
     except (OSError, ValueError, zipfile.BadZipFile) as exc:
