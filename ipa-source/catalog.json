@@ -70,10 +70,10 @@
   "com.google.ios.youtube": {
     "name": "YouTube",
     "developerName": "RBx9",
-    "subtitle": "Download and sideload this iOS app",
+    "subtitle": "YouTubePlus · sideloadable YouTube",
     "localizedDescription": "Available in the RBx9 IPA Library.",
-    "iconURL": "https://rbx9.github.io/icon.png",
-    "category": "utilities",
+    "iconURL": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/9d/cc/4d/9dcc4d29-3199-cfdb-da1e-64ec30a4046b/logo_youtube_2024_q4_color-0-0-1x_U007emarketing-0-0-0-7-0-0-0-85-220.png/512x512bb.jpg",
+    "category": "photo-video",
     "versions": [
       {
         "version": "21.42.4",
