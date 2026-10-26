@@ -84,5 +84,23 @@
         "minOSVersion": "17.0"
       }
     ]
+  },
+  "com.xapps.lines.ios9": {
+    "name": "Reda Line",
+    "developerName": "RBx9",
+    "subtitle": "Download and sideload this iOS app",
+    "localizedDescription": "Available in the RBx9 IPA Library.",
+    "iconURL": "https://rbx9.github.io/icon.png",
+    "category": "utilities",
+    "versions": [
+      {
+        "version": "4.6",
+        "buildVersion": "3",
+        "date": "2026-10-26T07:45:32Z",
+        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/Lines_4.6/Stable.lines.ipa",
+        "size": 17501929,
+        "minOSVersion": "13.0"
+      }
+    ]
   }
 }
