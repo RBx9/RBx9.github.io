@@ -2,7 +2,7 @@
 // files are never uploaded anywhere.
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRawStream, StandardFonts, degrees, rgb } from './vendor/pdf-lib.esm.min.js';
 import * as pdfjsLib from './vendor/pdf.min.mjs';
-import './compress.js';
+import './compress.js?v=5';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdf.worker.min.mjs';
 const { LEVELS: COMPRESS_LEVELS } = globalThis.RBx9Compress;
@@ -393,9 +393,9 @@ function buildGrid() {
     filter.category = chip.dataset.cat;
     applyFilter();
   }));
-  $('search').addEventListener('input', (e) => { filter.query = e.target.value.trim().toLowerCase(); applyFilter(); });
+  $('search')?.addEventListener('input', (e) => { filter.query = e.target.value.trim().toLowerCase(); applyFilter(); });
   document.querySelector('.search .i')?.remove();
-  document.querySelector('.search').insertAdjacentHTML('afterbegin', svg('search'));
+  document.querySelector('.search')?.insertAdjacentHTML('afterbegin', svg('search'));
 }
 
 function applyFilter() {
@@ -635,4 +635,12 @@ drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove
 window.addEventListener('hashchange', route);
 route();
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator) {
+  // When an updated version takes over, reload once so old and new files never mix.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController && !reloaded) { reloaded = true; location.reload(); }
+  });
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => reg.update()).catch(() => {});
+}
