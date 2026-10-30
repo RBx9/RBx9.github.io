@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- Hidden page the iOS app loads to run the shared compress.js engine. -->
+<script src="pdf-lib.min.js"></script>
+<script src="compress.js"></script>
+<script>
+const { shrinkImages } = RBx9Compress.create(PDFLib);
+
+function fromBase64(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function toBase64(bytes) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.slice(reader.result.indexOf(',') + 1));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(new Blob([bytes]));
+  });
+}
+
+// Returns { data: base64 PDF, found: number of large images considered }.
+async function compressPDF(b64, level) {
+  const doc = await PDFLib.PDFDocument.load(fromBase64(b64));
+  const found = await shrinkImages(doc, RBx9Compress.LEVELS[level]);
+  return { data: await toBase64(await doc.save({ useObjectStreams: true })), found };
+}
+</script>
