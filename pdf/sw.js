@@ -1,5 +1,5 @@
 // Offline cache for RBx9 PDF. Bump VERSION whenever app files change.
-const VERSION = 'rbx9-pdf-v1';
+const VERSION = 'rbx9-pdf-v2';
 const FILES = ['./', 'index.html', 'app.css', 'app.js', 'icon.svg', 'icon-180.png', 'manifest.webmanifest',
   'vendor/pdf-lib.esm.min.js', 'vendor/pdf.min.mjs', 'vendor/pdf.worker.min.mjs'];
 
