@@ -2,7 +2,8 @@
 // files are never uploaded anywhere.
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRawStream, StandardFonts, degrees, rgb } from './vendor/pdf-lib.esm.min.js';
 import * as pdfjsLib from './vendor/pdf.min.mjs';
-import './compress.js?v=5';
+import './compress.js?v=6';
+import './docx.js?v=6';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdf.worker.min.mjs';
 const { LEVELS: COMPRESS_LEVELS } = globalThis.RBx9Compress;
@@ -97,6 +98,113 @@ async function rasterize(entry, { scale, quality }, progress) {
   return out.save({ useObjectStreams: true });
 }
 
+// ---------- PDF to Word ----------
+
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+function pdfjsObject(page, id) {
+  const store = id.startsWith('g_') ? page.commonObjs : page.objs;
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), 4000);
+    try { store.get(id, (obj) => { clearTimeout(timer); resolve(obj); }); } catch { clearTimeout(timer); resolve(null); }
+  });
+}
+
+// Turns a decoded pdf.js image into JPEG bytes, flattened onto white.
+async function pdfjsImageToJpeg(img) {
+  if (!img || !img.width || !img.height) return null;
+  const src = document.createElement('canvas');
+  src.width = img.width;
+  src.height = img.height;
+  const sctx = src.getContext('2d');
+  if (img.bitmap) sctx.drawImage(img.bitmap, 0, 0);
+  else if (img.data) {
+    const { width: w, height: h, data } = img;
+    const rgba = new Uint8ClampedArray(w * h * 4);
+    if (img.kind === 3) rgba.set(data.subarray(0, rgba.length));
+    else if (img.kind === 2) for (let i = 0, j = 0; i < w * h; i++, j += 3) { rgba[i * 4] = data[j]; rgba[i * 4 + 1] = data[j + 1]; rgba[i * 4 + 2] = data[j + 2]; rgba[i * 4 + 3] = 255; }
+    else if (img.kind === 1) {
+      const rowBytes = (w + 7) >> 3;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const v = data[y * rowBytes + (x >> 3)] & (128 >> (x & 7)) ? 255 : 0;
+        const o = (y * w + x) * 4;
+        rgba[o] = rgba[o + 1] = rgba[o + 2] = v; rgba[o + 3] = 255;
+      }
+    } else return null;
+    sctx.putImageData(new ImageData(rgba, w, h), 0, 0);
+  } else return null;
+  const s = Math.min(1, 2000 / Math.max(img.width, img.height));
+  const out = document.createElement('canvas');
+  out.width = Math.max(1, Math.round(img.width * s));
+  out.height = Math.max(1, Math.round(img.height * s));
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.drawImage(src, 0, 0, out.width, out.height);
+  return new Uint8Array(await (await canvasToBlob(out, 'image/jpeg', 0.88)).arrayBuffer());
+}
+
+// Walks the page's drawing operators, tracking the transform, to find where each image is drawn.
+async function pageImages(page, ops, viewport) {
+  const { OPS, Util } = pdfjsLib;
+  const identity = [1, 0, 0, 1, 0, 0];
+  const images = [];
+  let ctm = identity;
+  const stack = [];
+  for (let k = 0; k < ops.fnArray.length; k++) {
+    const fn = ops.fnArray[k], args = ops.argsArray[k];
+    if (fn === OPS.save) stack.push(ctm);
+    else if (fn === OPS.restore) ctm = stack.pop() || identity;
+    else if (fn === OPS.transform) ctm = Util.transform(ctm, args);
+    else if (fn === OPS.paintFormXObjectBegin) { stack.push(ctm); if (Array.isArray(args[0])) ctm = Util.transform(ctm, args[0]); }
+    else if (fn === OPS.paintFormXObjectEnd) ctm = stack.pop() || identity;
+    else if (fn === OPS.paintImageXObject || fn === OPS.paintInlineImageXObject) {
+      const m = Util.transform(viewport.transform, ctm);
+      const xs = [m[4], m[0] + m[4], m[2] + m[4], m[0] + m[2] + m[4]];
+      const ys = [m[5], m[1] + m[5], m[3] + m[5], m[1] + m[3] + m[5]];
+      const x = Math.min(...xs), y = Math.min(...ys), w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+      if (w < 24 || h < 24) continue; // icons, bullets and rules
+      const img = fn === OPS.paintInlineImageXObject ? args[0] : await pdfjsObject(page, args[0]);
+      const data = await pdfjsImageToJpeg(img).catch(() => null);
+      if (data) images.push({ x, y, w, h, data, mime: 'image/jpeg' });
+    }
+  }
+  return images;
+}
+
+async function extractForWord(entry, progress) {
+  const doc = await openPdfJs(entry.bytes);
+  const pages = [];
+  let textChars = 0;
+  for (let n = 1; n <= doc.numPages; n++) {
+    progress(`Reading page ${n} of ${doc.numPages}…`);
+    const page = await doc.getPage(n);
+    const viewport = page.getViewport({ scale: 1 });
+    const ops = await page.getOperatorList(); // also loads the page's fonts, so their names are known
+    const content = await page.getTextContent();
+    const items = [];
+    for (const it of content.items) {
+      if (!it.str || !it.str.trim()) continue;
+      const tx = pdfjsLib.Util.transform(viewport.transform, it.transform);
+      const size = Math.hypot(tx[2], tx[3]);
+      if (size < 1) continue;
+      let name = content.styles[it.fontName]?.fontFamily || '';
+      let font = null;
+      try { if (page.commonObjs.has(it.fontName)) { font = page.commonObjs.get(it.fontName); name = font.name || name; } } catch { /* font not loaded */ }
+      items.push({
+        t: it.str, x: tx[4], y: tx[5], w: it.width, s: size, f: name,
+        b: !!font?.bold || /bold|black|heavy|semibold|demi/i.test(name),
+        i: !!font?.italic || /italic|oblique/i.test(name),
+      });
+      textChars += it.str.trim().length;
+    }
+    pages.push({ width: viewport.width, height: viewport.height, items, images: await pageImages(page, ops, viewport) });
+    page.cleanup();
+  }
+  await doc.destroy();
+  return { pages, textChars };
+}
+
 // ---------- icons ----------
 
 const ICONS = {
@@ -108,6 +216,8 @@ const ICONS = {
   rotate: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
   compress: '<path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="m14 10 7-7"/><path d="m3 21 7-7"/>',
   image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
+  edit: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m10.5 17.5 6-6-2-2-6 6-.5 2.5z"/>',
+  word: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m8 12 1.5 6 2.5-4 2.5 4L16 12"/>',
   fileImage: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><circle cx="10" cy="12.5" r="2"/><path d="m20 17-1.1-1.1a2 2 0 0 0-2.8 0L10 22"/>',
   hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="m16 3-2 18"/>',
   droplet: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
@@ -131,6 +241,10 @@ const gradient = (t) => `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]})
 const PAGE_SIZES = { a4: [595.28, 841.89], letter: [612, 792] };
 
 const TOOLS = [
+  {
+    id: 'edit', title: 'Edit PDF', icon: 'edit', colors: ['#8b5cf6', '#ec4899'], category: 'edit', href: 'edit.html',
+    desc: 'Change text, add text, images, signatures, drawings and highlights.',
+  },
   {
     id: 'merge', title: 'Merge PDF', icon: 'merge', colors: ['#f43f5e', '#fb923c'], category: 'organize', accept: 'pdf', multiple: true, minFiles: 2,
     desc: 'Combine several PDFs into one, in the order you choose.',
@@ -286,6 +400,17 @@ const TOOLS = [
     },
   },
   {
+    id: 'pdf2word', title: 'PDF to Word', icon: 'word', colors: ['#2563eb', '#0ea5e9'], category: 'convert', accept: 'pdf',
+    desc: 'Turn a PDF into an editable Word document (.docx).',
+    async run({ files, progress }) {
+      const { pages, textChars } = await extractForWord(files[0], progress);
+      progress('Building Word document…');
+      const blob = new Blob([await globalThis.RBx9Docx.build(pages)], { type: DOCX_MIME });
+      const note = textChars ? null : `${fmtSize(blob.size)} · scanned PDF, so pages were added as pictures. The iPhone app can recognize the text.`;
+      return [{ name: `${baseName(files[0].file.name)}.docx`, blob, note }];
+    },
+  },
+  {
     id: 'pdf2img', title: 'PDF to images', icon: 'fileImage', colors: ['#06b6d4', '#6366f1'], category: 'convert', accept: 'pdf',
     desc: 'Save every page as a JPG or PNG image.',
     options: [
@@ -385,7 +510,7 @@ function buildGrid() {
     btn.innerHTML = `<div class="ic">${svg(t.icon)}</div><strong></strong><span></span>`;
     btn.querySelector('strong').textContent = t.title;
     btn.querySelector('span').textContent = t.desc;
-    btn.addEventListener('click', () => { location.hash = t.id; });
+    btn.addEventListener('click', () => { if (t.href) location.href = t.href; else location.hash = t.id; });
     grid.append(btn);
   }
   document.querySelectorAll('.chip').forEach((chip) => chip.addEventListener('click', () => {
@@ -620,7 +745,7 @@ async function run() {
 }
 
 function route() {
-  const t = TOOLS.find((x) => x.id === location.hash.slice(1));
+  const t = TOOLS.find((x) => x.id === location.hash.slice(1) && !x.href);
   t ? openTool(t) : goHome();
 }
 

@@ -23,7 +23,7 @@ enum InputKind {
 
 enum Tool: String, CaseIterable, Identifiable {
     case merge, split, organize, remove, extract, rotate, compress
-    case scan, imagesToPDF, pdfToImages
+    case scan, pdfToWord, imagesToPDF, pdfToImages
     case pageNumbers, watermark, protect, unlock, extractText
 
     var id: String { rawValue }
@@ -38,6 +38,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .rotate: return "Rotate PDF"
         case .compress: return "Compress PDF"
         case .scan: return "Scan to PDF"
+        case .pdfToWord: return "PDF to Word"
         case .imagesToPDF: return "Images to PDF"
         case .pdfToImages: return "PDF to Images"
         case .pageNumbers: return "Page Numbers"
@@ -58,6 +59,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .rotate: return "Rotate all pages or just some."
         case .compress: return "Make the file smaller."
         case .scan: return "Use the camera to scan paper documents."
+        case .pdfToWord: return "Turn a PDF into an editable Word document."
         case .imagesToPDF: return "Convert photos and images into a PDF."
         case .pdfToImages: return "Save every page as a JPG or PNG."
         case .pageNumbers: return "Stamp page numbers on every page."
@@ -78,6 +80,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .rotate: return "rotate.right"
         case .compress: return "arrow.down.right.and.arrow.up.left"
         case .scan: return "doc.viewfinder"
+        case .pdfToWord: return "doc.text"
         case .imagesToPDF: return "photo.on.rectangle"
         case .pdfToImages: return "photo"
         case .pageNumbers: return "number"
@@ -100,6 +103,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .rotate: hex = (0x14B8A6, 0x22C55E)
         case .compress: hex = (0x22C55E, 0x84CC16)
         case .scan: hex = (0x6366F1, 0x0EA5E9)
+        case .pdfToWord: hex = (0x2563EB, 0x0EA5E9)
         case .imagesToPDF: hex = (0xF59E0B, 0xEF4444)
         case .pdfToImages: hex = (0x06B6D4, 0x6366F1)
         case .pageNumbers: hex = (0x6366F1, 0x8B5CF6)

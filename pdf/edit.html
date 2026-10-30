@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a14" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f7fb" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="RBx9 PDF">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Edit PDF · RBx9 PDF</title>
+<meta name="description" content="Edit PDFs in your browser: change text, add text, images, signatures, drawings, highlights and shapes. Files never leave your device.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Caveat:wght@600&family=Dancing+Script:wght@600&display=swap">
+<link rel="stylesheet" href="app.css?v=6">
+<link rel="stylesheet" href="edit.css?v=6">
+</head>
+<body class="editor">
+<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<header class="top">
+  <a class="brand" href="./"><img src="icon.svg" alt="" width="34" height="34"><span>RBx9 <b>PDF</b></span></a>
+  <div class="top-actions">
+    <span class="doc-name" id="doc-name"></span>
+    <button class="icon-btn" id="undo" title="Undo (Ctrl+Z)" disabled></button>
+    <button class="icon-btn" id="redo" title="Redo (Ctrl+Shift+Z)" disabled></button>
+    <button class="primary small" id="save" disabled>Download</button>
+  </div>
+</header>
+
+<main id="start">
+  <a class="back" href="./">All tools</a>
+  <div class="panel">
+    <div class="tool-head">
+      <div class="tool-icon" id="start-icon"></div>
+      <div><h1>Edit PDF</h1><p>Change existing text, add text, images, signatures, drawings, highlights and shapes.</p></div>
+    </div>
+    <label class="drop" id="drop">
+      <input type="file" id="file-input" accept="application/pdf,.pdf" hidden>
+      <span class="drop-ic" id="drop-ic"></span>
+      <strong>Choose a PDF</strong>
+      <span>or drop it here</span>
+    </label>
+    <p class="status" id="start-status" role="status"></p>
+  </div>
+</main>
+
+<div id="workspace" hidden>
+  <nav class="toolbar-edit" id="tools" aria-label="Editing tools"></nav>
+  <div class="props" id="props">
+    <div class="swatches" id="swatches"></div>
+    <label class="prop" id="prop-size"><span>Size</span><input type="range" id="size" min="6" max="72" value="16"><output id="size-out">16</output></label>
+    <label class="prop" id="prop-stroke"><span>Stroke</span><input type="range" id="stroke" min="1" max="20" value="3"><output id="stroke-out">3</output></label>
+    <div class="prop seg" id="prop-font">
+      <select id="font" aria-label="Font"><option value="sans">Sans</option><option value="serif">Serif</option><option value="mono">Mono</option></select>
+      <button class="icon-btn toggle" id="bold" title="Bold"><b>B</b></button>
+      <button class="icon-btn toggle" id="italic" title="Italic"><i>I</i></button>
+    </div>
+    <button class="icon-btn danger" id="delete" title="Delete selected (Del)" hidden></button>
+    <span class="hint" id="hint"></span>
+    <div class="zoom">
+      <button class="icon-btn" id="zoom-out" title="Zoom out"></button>
+      <output id="zoom-out-label">100%</output>
+      <button class="icon-btn" id="zoom-in" title="Zoom in"></button>
+    </div>
+  </div>
+  <div class="pages-wrap" id="pages"></div>
+</div>
+
+<dialog id="sign-dialog" class="sheet">
+  <form method="dialog" class="sheet-body">
+    <h2>Add signature</h2>
+    <div class="chips"><button type="button" class="chip on" data-mode="draw">Draw</button><button type="button" class="chip" data-mode="type">Type</button></div>
+    <div id="sign-draw"><canvas id="sign-pad" width="900" height="300"></canvas></div>
+    <div id="sign-type" hidden>
+      <input type="text" id="sign-text" placeholder="Your name" maxlength="60">
+      <select id="sign-font"><option value="Caveat">Handwritten</option><option value="Dancing Script">Script</option></select>
+      <div class="sign-preview" id="sign-preview"></div>
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="ghost" id="sign-clear">Clear</button>
+      <span style="flex:1"></span>
+      <button value="cancel" class="ghost">Cancel</button>
+      <button type="button" class="primary small" id="sign-add">Add signature</button>
+    </div>
+  </form>
+</dialog>
+<input type="file" id="image-input" accept="image/*" hidden>
+
+<script type="module" src="edit.js?v=6"></script>
+</body>
+</html>

@@ -312,7 +312,7 @@ struct ToolView: View {
                 HStack(spacing: 12) {
                     Button { preview = output.url } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: output.name.hasSuffix(".pdf") ? "doc.fill" : output.name.hasSuffix(".txt") ? "doc.plaintext.fill" : "photo.fill")
+                            Image(systemName: output.name.hasSuffix(".pdf") ? "doc.fill" : output.name.hasSuffix(".txt") ? "doc.plaintext.fill" : output.name.hasSuffix(".docx") ? "doc.text.fill" : "photo.fill")
                                 .foregroundStyle(.white)
                                 .frame(width: 36, height: 36)
                                 .background(LinearGradient.brand, in: RoundedRectangle(cornerRadius: 10, style: .continuous))

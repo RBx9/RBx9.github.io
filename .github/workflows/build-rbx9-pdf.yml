@@ -9,6 +9,7 @@ on:
     paths:
       - 'apps/rbx9-pdf-ios/**'
       - 'pdf/compress.js'
+      - 'pdf/docx.js'
       - '.github/workflows/build-rbx9-pdf.yml'
     tags:
       - 'rbx9-pdf-v*'
