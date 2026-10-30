@@ -1,0 +1,79 @@
+/* Edit PDF workspace. Builds on app.css tokens. */
+[hidden]{display:none!important}
+.top-actions{display:flex;align-items:center;gap:8px;min-width:0}
+.doc-name{font-weight:600;color:var(--muted);font-size:.9rem;max-width:30vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.primary.small{padding:10px 18px;font-size:.92rem;border-radius:12px}
+.back{text-decoration:none}
+
+#workspace{display:flex;flex-direction:column;min-height:calc(100vh - 64px)}
+.toolbar-edit{position:sticky;top:63px;z-index:9;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:10px max(16px,calc((100vw - 1120px)/2));background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+.toolbar-edit::-webkit-scrollbar{display:none}
+.tool-btn{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:68px;padding:8px 10px;border-radius:14px;border:1px solid transparent;background:transparent;cursor:pointer;color:var(--muted);font-size:.74rem;font-weight:600;white-space:nowrap;transition:.15s}
+.tool-btn .i{width:20px;height:20px}
+.tool-btn:hover{color:var(--text);background:var(--surface)}
+.tool-btn.on{color:#fff;background:var(--brand-btn);box-shadow:0 8px 18px -8px rgba(99,102,241,.8)}
+
+.props{position:sticky;top:132px;z-index:8;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px max(16px,calc((100vw - 1120px)/2));background:color-mix(in srgb,var(--bg) 60%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--line);font-size:.85rem}
+.swatches{display:flex;gap:6px}
+.swatch{width:24px;height:24px;border-radius:50%;border:2px solid var(--surface-solid);box-shadow:0 0 0 1px var(--line-strong);cursor:pointer;padding:0}
+.swatch.on{box-shadow:0 0 0 2px var(--accent)}
+.swatch.custom{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);position:relative;overflow:hidden}
+.swatch.custom input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.prop{display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:600}
+.prop input[type=range]{width:110px;accent-color:var(--accent)}
+.prop output{min-width:20px;color:var(--text)}
+.prop.seg{gap:4px}
+.prop select{background:var(--field);border:1px solid var(--line-strong);border-radius:10px;padding:6px 10px;color:var(--text)}
+.icon-btn.toggle.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.icon-btn.danger:hover{color:var(--danger);border-color:var(--danger)}
+.hint{color:var(--muted);flex:1;min-width:120px}
+.zoom{display:flex;align-items:center;gap:6px;margin-left:auto}
+.zoom output{min-width:44px;text-align:center;font-weight:600}
+
+.pages-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:22px;padding:28px 16px 80px;overflow-x:auto}
+.page-box{position:relative;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.08),0 18px 40px rgba(15,16,35,.18);border-radius:4px;flex-shrink:0}
+.page-box canvas{display:block;width:100%;height:100%;border-radius:4px}
+.page-num{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:.75rem;color:var(--muted)}
+.layer{position:absolute;top:0;left:0;transform-origin:0 0;touch-action:pan-x pan-y pinch-zoom}
+/* Drawing tools own the touch; elsewhere pages scroll, but objects can still be dragged. */
+.layer.tool-draw,.layer.tool-highlight,.layer.tool-whiteout,.layer.tool-rect,.layer .obj{touch-action:none}
+.layer.tool-select{cursor:default}
+.layer.tool-text{cursor:text}
+.layer.tool-draw,.layer.tool-highlight,.layer.tool-whiteout,.layer.tool-rect{cursor:crosshair}
+
+.hit{position:absolute;border-radius:2px;cursor:text}
+.hit:hover{outline:1.5px dashed #6366f1;background:rgba(99,102,241,.08)}
+.layer.tool-edittext .hit{pointer-events:auto}
+.layer:not(.tool-edittext) .hit{pointer-events:none}
+
+.obj{position:absolute;box-sizing:border-box}
+.layer.tool-select .obj{cursor:move}
+.obj.text{white-space:pre;line-height:1.2;outline:none;min-width:4px;padding:0}
+.obj.text[contenteditable=true]{cursor:text;outline:1.5px solid #6366f1;outline-offset:2px;background:rgba(255,255,255,.6)}
+.obj.image img{width:100%;height:100%;display:block;pointer-events:none;user-select:none}
+.obj.highlight{mix-blend-mode:multiply}
+.obj.path{pointer-events:none}
+.obj.path svg{overflow:visible;display:block}
+.layer.tool-select .obj.path{pointer-events:auto}
+.obj.selected{outline:1.5px solid #6366f1;outline-offset:3px}
+.handle{position:absolute;right:-9px;bottom:-9px;width:14px;height:14px;border-radius:50%;background:#6366f1;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:nwse-resize}
+
+.sheet{border:0;border-radius:24px;padding:0;background:var(--surface-solid);color:var(--text);box-shadow:var(--shadow-lg);width:min(560px,calc(100vw - 24px))}
+.sheet::backdrop{background:rgba(10,10,20,.5);backdrop-filter:blur(4px)}
+.sheet-body{padding:22px;display:flex;flex-direction:column;gap:14px}
+.sheet h2{margin:0;font-size:1.2rem}
+.sheet .chips{align-self:flex-start}
+#sign-pad{width:100%;height:auto;aspect-ratio:3/1;background:#fff;border-radius:14px;border:1px dashed var(--line-strong);touch-action:none;cursor:crosshair}
+#sign-type{display:flex;flex-direction:column;gap:10px}
+#sign-type input,#sign-type select{background:var(--field);border:1px solid var(--line-strong);border-radius:12px;padding:11px 14px;color:var(--text)}
+.sign-preview{height:110px;display:grid;place-items:center;background:#fff;color:#111827;border-radius:14px;font-size:54px;overflow:hidden;white-space:nowrap}
+.sheet-actions{display:flex;gap:10px;align-items:center}
+.ghost{background:transparent;border:1px solid var(--line-strong);border-radius:12px;padding:10px 16px;font-weight:600;cursor:pointer;color:var(--text)}
+
+@media(max-width:640px){
+  .doc-name{display:none}
+  .toolbar-edit{top:63px}
+  .props{top:128px}
+  .hint{display:none}
+  .prop input[type=range]{width:80px}
+}

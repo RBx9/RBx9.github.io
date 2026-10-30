@@ -216,6 +216,7 @@ const ICONS = {
   rotate: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
   compress: '<path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="m14 10 7-7"/><path d="m3 21 7-7"/>',
   image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
+  edit: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m10.5 17.5 6-6-2-2-6 6-.5 2.5z"/>',
   word: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m8 12 1.5 6 2.5-4 2.5 4L16 12"/>',
   fileImage: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><circle cx="10" cy="12.5" r="2"/><path d="m20 17-1.1-1.1a2 2 0 0 0-2.8 0L10 22"/>',
   hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="m16 3-2 18"/>',
@@ -240,6 +241,10 @@ const gradient = (t) => `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]})
 const PAGE_SIZES = { a4: [595.28, 841.89], letter: [612, 792] };
 
 const TOOLS = [
+  {
+    id: 'edit', title: 'Edit PDF', icon: 'edit', colors: ['#8b5cf6', '#ec4899'], category: 'edit', href: 'edit.html',
+    desc: 'Change text, add text, images, signatures, drawings and highlights.',
+  },
   {
     id: 'merge', title: 'Merge PDF', icon: 'merge', colors: ['#f43f5e', '#fb923c'], category: 'organize', accept: 'pdf', multiple: true, minFiles: 2,
     desc: 'Combine several PDFs into one, in the order you choose.',
@@ -505,7 +510,7 @@ function buildGrid() {
     btn.innerHTML = `<div class="ic">${svg(t.icon)}</div><strong></strong><span></span>`;
     btn.querySelector('strong').textContent = t.title;
     btn.querySelector('span').textContent = t.desc;
-    btn.addEventListener('click', () => { location.hash = t.id; });
+    btn.addEventListener('click', () => { if (t.href) location.href = t.href; else location.hash = t.id; });
     grid.append(btn);
   }
   document.querySelectorAll('.chip').forEach((chip) => chip.addEventListener('click', () => {
@@ -740,7 +745,7 @@ async function run() {
 }
 
 function route() {
-  const t = TOOLS.find((x) => x.id === location.hash.slice(1));
+  const t = TOOLS.find((x) => x.id === location.hash.slice(1) && !x.href);
   t ? openTool(t) : goHome();
 }
 
