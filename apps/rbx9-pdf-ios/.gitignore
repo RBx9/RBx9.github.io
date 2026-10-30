@@ -3,3 +3,4 @@ build/
 Payload/
 *.ipa
 build.log
+Support/Info.plist

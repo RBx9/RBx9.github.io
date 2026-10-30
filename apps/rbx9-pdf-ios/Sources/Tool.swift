@@ -1,5 +1,22 @@
 import SwiftUI
 
+extension Color {
+    init(hex: UInt32) {
+        self.init(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
+    }
+
+    /// Indigo → violet → pink, the RBx9 PDF brand gradient.
+    static let brand = [Color(hex: 0x6366F1), Color(hex: 0xA855F7), Color(hex: 0xEC4899)]
+}
+
+extension LinearGradient {
+    static let brand = LinearGradient(colors: Color.brand, startPoint: .topLeading, endPoint: .bottomTrailing)
+
+    init(_ tool: Tool) {
+        self.init(colors: tool.colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+}
+
 enum InputKind {
     case pdf, images, scan
 }
@@ -71,31 +88,46 @@ enum Tool: String, CaseIterable, Identifiable {
         }
     }
 
-    var color: Color {
+    /// Two-stop gradient for the tool's icon (matches the web app).
+    var colors: [Color] {
+        let hex: (UInt32, UInt32)
         switch self {
-        case .merge: return .red
-        case .split: return .orange
-        case .organize: return .purple
-        case .remove: return .pink
-        case .extract: return .blue
-        case .rotate: return .teal
-        case .compress: return .green
-        case .scan: return .indigo
-        case .imagesToPDF: return .yellow
-        case .pdfToImages: return .cyan
-        case .pageNumbers: return .indigo
-        case .watermark: return .blue
-        case .protect: return .gray
-        case .unlock: return .brown
-        case .extractText: return .mint
+        case .merge: hex = (0xF43F5E, 0xFB923C)
+        case .split: hex = (0xF97316, 0xFACC15)
+        case .organize: hex = (0x8B5CF6, 0xD946EF)
+        case .remove: hex = (0xEC4899, 0xF43F5E)
+        case .extract: hex = (0x3B82F6, 0x06B6D4)
+        case .rotate: hex = (0x14B8A6, 0x22C55E)
+        case .compress: hex = (0x22C55E, 0x84CC16)
+        case .scan: hex = (0x6366F1, 0x0EA5E9)
+        case .imagesToPDF: hex = (0xF59E0B, 0xEF4444)
+        case .pdfToImages: hex = (0x06B6D4, 0x6366F1)
+        case .pageNumbers: hex = (0x6366F1, 0x8B5CF6)
+        case .watermark: hex = (0x0EA5E9, 0x6366F1)
+        case .protect: hex = (0x475569, 0x1E293B)
+        case .unlock: hex = (0xA855F7, 0x6366F1)
+        case .extractText: hex = (0x10B981, 0x0EA5E9)
         }
+        return [Color(hex: hex.0), Color(hex: hex.1)]
     }
+
+    var color: Color { colors[0] }
 
     var input: InputKind {
         switch self {
         case .scan: return .scan
         case .imagesToPDF: return .images
         default: return .pdf
+        }
+    }
+
+    /// Whether a file opened from another app can go straight into this tool.
+    func accepts(_ file: InputFile) -> Bool {
+        let isPDF = file.name.lowercased().hasSuffix(".pdf")
+        switch input {
+        case .pdf: return isPDF
+        case .images: return !isPDF
+        case .scan: return false
         }
     }
 

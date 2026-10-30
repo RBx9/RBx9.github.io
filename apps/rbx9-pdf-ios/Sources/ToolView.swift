@@ -7,6 +7,7 @@ import VisionKit
 struct ToolView: View {
     let tool: Tool
 
+    @EnvironmentObject private var inbox: Inbox
     @State private var files: [InputFile] = []
     @State private var options = ToolOptions()
     @State private var pages: [PageItem] = []
@@ -19,27 +20,37 @@ struct ToolView: View {
     @State private var errorText: String?
     @State private var preview: URL?
 
+    private var canRun: Bool { !working && files.count >= tool.minimumFiles }
+
     var body: some View {
-        Form {
+        List {
             Section {
-                inputButtons
-            } footer: {
-                Text(tool.subtitle)
+                header
+                inputCard
             }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+            .listRowSeparator(.hidden)
 
             if !files.isEmpty {
-                Section(tool.allowsMultiple ? "Files (drag to reorder)" : "File") {
+                Section {
                     ForEach(files) { file in
-                        HStack {
-                            Image(systemName: tool.input == .pdf ? "doc.richtext" : "photo")
-                                .foregroundStyle(tool.color)
-                            Text(file.name).lineLimit(1)
-                            Spacer()
-                            Text(formatSize(file.data.count)).font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 12) {
+                            Image(systemName: tool.input == .pdf ? "doc.fill" : "photo.fill")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(LinearGradient(tool))
+                                .frame(width: 36, height: 36)
+                                .background(tool.color.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(file.name).lineLimit(1).font(.subheadline.weight(.medium))
+                                Text(formatSize(file.data.count)).font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }
                     .onMove { files.move(fromOffsets: $0, toOffset: $1) }
                     .onDelete { files.remove(atOffsets: $0); pages = []; outputs = [] }
+                } header: {
+                    Text(tool.allowsMultiple ? "Files · tap Edit to reorder" : "File")
                 }
             }
 
@@ -49,19 +60,11 @@ struct ToolView: View {
 
             optionsSection
 
-            Section {
-                Button(action: run) {
-                    HStack {
-                        Spacer()
-                        if working { ProgressView().padding(.trailing, 6) }
-                        Text(working ? (status ?? "Working…") : tool.title).bold()
-                        Spacer()
-                    }
-                }
-                .disabled(working || files.count < tool.minimumFiles)
-            } footer: {
-                if let errorText {
-                    Text(errorText).foregroundStyle(.red)
+            if let errorText {
+                Section {
+                    Label(errorText, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                        .font(.subheadline)
                 }
             }
 
@@ -69,15 +72,24 @@ struct ToolView: View {
                 resultsSection
             }
         }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(BrandBackground())
         .navigationTitle(tool.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if tool.allowsMultiple || tool == .organize { EditButton() }
         }
-        .fileImporter(isPresented: $showImporter,
-                      allowedContentTypes: tool.input == .pdf ? [.pdf] : [.image],
-                      allowsMultipleSelection: tool.allowsMultiple,
-                      onCompletion: importFiles)
+        .safeAreaInset(edge: .bottom) { runButton }
+        .sheet(isPresented: $showImporter) {
+            DocumentPicker(types: tool.input == .pdf ? [.pdf] : [.image], allowsMultiple: tool.allowsMultiple) { urls in
+                showImporter = false
+                importFiles(urls)
+            } onCancel: {
+                showImporter = false
+            }
+            .ignoresSafeArea()
+        }
         .onChange(of: photoItems) { items in loadPhotos(items) }
         .sheet(isPresented: $showScanner) {
             ScannerView { images in
@@ -91,28 +103,93 @@ struct ToolView: View {
             .ignoresSafeArea()
         }
         .quickLookPreview($preview)
+        .onAppear {
+            if let file = inbox.take(for: tool) { add([file]) }
+        }
     }
 
     // MARK: Sections
+
+    private var header: some View {
+        HStack(spacing: 16) {
+            ToolIcon(tool: tool, size: 60)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(tool.title).font(.system(.title2, design: .rounded).weight(.bold))
+                Text(tool.subtitle).font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    /// The big dashed "add files" card.
+    private var inputCard: some View {
+        VStack(spacing: 14) {
+            Image(systemName: tool.input == .scan ? "doc.viewfinder" : tool.input == .images ? "photo.on.rectangle.angled" : "doc.badge.plus")
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(LinearGradient(tool))
+                .frame(width: 64, height: 64)
+                .background(tool.color.opacity(0.12), in: Circle())
+            inputButtons
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 22)
+        .padding(.horizontal, 16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [7, 6]))
+                .foregroundStyle(tool.color.opacity(0.45))
+        )
+    }
 
     @ViewBuilder private var inputButtons: some View {
         switch tool.input {
         case .pdf:
             Button { showImporter = true } label: {
-                Label(tool.allowsMultiple ? "Add PDFs" : (files.isEmpty ? "Choose PDF" : "Choose a different PDF"), systemImage: "folder")
+                Text(tool.allowsMultiple ? (files.isEmpty ? "Choose PDFs" : "Add more PDFs") : (files.isEmpty ? "Choose PDF" : "Choose another PDF"))
             }
+            .buttonStyle(GradientButtonStyle(tool: tool))
+            Text("From Files, iCloud Drive or On My iPhone").font(.caption).foregroundStyle(.secondary)
         case .images:
-            PhotosPicker(selection: $photoItems, matching: .images) {
-                Label("Add from Photos", systemImage: "photo.on.rectangle")
+            HStack(spacing: 10) {
+                PhotosPicker(selection: $photoItems, matching: .images) {
+                    Label("Photos", systemImage: "photo")
+                }
+                .buttonStyle(GradientButtonStyle(tool: tool))
+                Button { showImporter = true } label: { Label("Files", systemImage: "folder") }
+                    .buttonStyle(GradientButtonStyle(tool: tool, filled: false))
             }
-            Button { showImporter = true } label: { Label("Add from Files", systemImage: "folder") }
         case .scan:
-            Button { showScanner = true } label: { Label(files.isEmpty ? "Scan document" : "Scan more pages", systemImage: "doc.viewfinder") }
+            Button { showScanner = true } label: { Text(files.isEmpty ? "Scan Document" : "Scan More Pages") }
+                .buttonStyle(GradientButtonStyle(tool: tool))
                 .disabled(!VNDocumentCameraViewController.isSupported)
             if !VNDocumentCameraViewController.isSupported {
-                Text("This device can’t scan documents.").foregroundStyle(.secondary)
+                Text("This device can’t scan documents.").font(.caption).foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var runButton: some View {
+        Button(action: run) {
+            HStack(spacing: 10) {
+                if working { ProgressView().tint(.white) }
+                Text(working ? (status ?? "Working…") : tool.title)
+                    .lineLimit(1)
+            }
+            .font(.headline)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(LinearGradient.brand, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .opacity(canRun || working ? 1 : 0.4)
+            .shadow(color: Color(hex: 0x7C3AED).opacity(canRun ? 0.4 : 0), radius: 14, y: 6)
+        }
+        .buttonStyle(PressableStyle())
+        .disabled(!canRun)
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+        .background(.bar)
     }
 
     private var organizeSection: some View {
@@ -232,23 +309,34 @@ struct ToolView: View {
     private var resultsSection: some View {
         Section {
             ForEach(outputs) { output in
-                HStack {
+                HStack(spacing: 12) {
                     Button { preview = output.url } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(output.name).lineLimit(1)
-                            Text(output.note ?? formatSize(output.size)).font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 12) {
+                            Image(systemName: output.name.hasSuffix(".pdf") ? "doc.fill" : output.name.hasSuffix(".txt") ? "doc.plaintext.fill" : "photo.fill")
+                                .foregroundStyle(.white)
+                                .frame(width: 36, height: 36)
+                                .background(LinearGradient.brand, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(output.name).lineLimit(1).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                                Text(output.note ?? formatSize(output.size)).font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }
                     Spacer()
-                    ShareLink(item: output.url) { Image(systemName: "square.and.arrow.up") }
-                        .buttonStyle(.borderless)
+                    ShareLink(item: output.url) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.body.weight(.semibold))
+                            .frame(width: 36, height: 36)
+                            .background(Color.accentColor.opacity(0.12), in: Circle())
+                    }
+                    .buttonStyle(.borderless)
                 }
             }
             if outputs.count > 1 {
                 ShareLink(items: outputs.map(\.url)) { Label("Share all \(outputs.count) files", systemImage: "square.and.arrow.up.on.square") }
             }
         } header: {
-            Text("Done")
+            Label("Ready", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
         } footer: {
             Text("Tap a file to preview it, or share it to save it to Files.")
         }
@@ -265,22 +353,22 @@ struct ToolView: View {
 
     // MARK: Actions
 
-    private func importFiles(_ result: Result<[URL], Error>) {
-        switch result {
-        case .failure(let error):
-            errorText = error.localizedDescription
-        case .success(let urls):
-            let loaded: [InputFile] = urls.compactMap { url in
-                let scoped = url.startAccessingSecurityScopedResource()
-                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                guard let data = try? Data(contentsOf: url) else { return nil }
-                return InputFile(name: url.lastPathComponent, data: data)
-            }
-            if loaded.count < urls.count { errorText = "Some files could not be read." } else { errorText = nil }
-            files = tool.allowsMultiple ? files + loaded : Array(loaded.prefix(1))
-            outputs = []
-            if tool == .organize { loadThumbnails() }
+    private func importFiles(_ urls: [URL]) {
+        let loaded: [InputFile] = urls.compactMap { url in
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: url) else { return nil }
+            return InputFile(name: url.lastPathComponent, data: data)
         }
+        errorText = loaded.count < urls.count ? "Some files could not be read." : nil
+        add(loaded)
+    }
+
+    private func add(_ loaded: [InputFile]) {
+        guard !loaded.isEmpty else { return }
+        files = tool.allowsMultiple ? files + loaded : Array(loaded.prefix(1))
+        outputs = []
+        if tool == .organize { loadThumbnails() }
     }
 
     private func loadPhotos(_ items: [PhotosPickerItem]) {
@@ -335,6 +423,63 @@ struct ToolView: View {
             working = false
             status = nil
         }
+    }
+}
+
+/// Files picker that copies the chosen files into the app. Copying (instead of
+/// opening them in place) avoids the permission problems sideloaded apps hit.
+struct DocumentPicker: UIViewControllerRepresentable {
+    let types: [UTType]
+    let allowsMultiple: Bool
+    let onPick: ([URL]) -> Void
+    let onCancel: () -> Void
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: true)
+        picker.allowsMultipleSelection = allowsMultiple
+        picker.shouldShowFileExtensions = true
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ picker: UIDocumentPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let parent: DocumentPicker
+
+        init(_ parent: DocumentPicker) { self.parent = parent }
+
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            parent.onPick(urls)
+        }
+
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            parent.onCancel()
+        }
+    }
+}
+
+struct GradientButtonStyle: ButtonStyle {
+    let tool: Tool
+    var filled = true
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(filled ? AnyShapeStyle(.white) : AnyShapeStyle(tool.color))
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background {
+                if filled {
+                    Capsule().fill(LinearGradient(tool)).shadow(color: tool.color.opacity(0.4), radius: 8, y: 4)
+                } else {
+                    Capsule().fill(tool.color.opacity(0.12))
+                }
+            }
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 

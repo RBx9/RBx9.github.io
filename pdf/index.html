@@ -3,58 +3,88 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1020">
+<meta name="theme-color" content="#0a0a14" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f7fb" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="RBx9 PDF">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
+<meta property="og:title" content="RBx9 PDF">
+<meta property="og:description" content="Free, private PDF tools that run in your browser.">
+<meta property="og:image" content="https://rbx9.github.io/pdf/icon-512.png">
 <title>RBx9 PDF</title>
 <meta name="description" content="Free PDF tools that run entirely in your browser: merge, split, compress, rotate, organize, convert, number and watermark PDFs. Files never leave your device.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
+<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
 <header class="top">
-  <a class="brand" href="./" data-home><img src="icon.svg" alt="" width="32" height="32"><span>RBx9 PDF</span></a>
-  <span class="privacy">🔒 Files never leave your device</span>
+  <a class="brand" href="./" data-home><img src="icon.svg" alt="" width="34" height="34"><span>RBx9 <b>PDF</b></span></a>
+  <span class="pill"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>100% on-device</span>
 </header>
 
 <main id="home">
   <section class="hero">
-    <h1>Every PDF tool you need, private by design</h1>
-    <p>Merge, split, compress, convert, rotate and edit PDFs right in your browser. Nothing is uploaded, so your files stay on your device.</p>
+    <h1>Every PDF tool,<br><span class="grad">private by design.</span></h1>
+    <p>Merge, split, compress, convert and edit PDFs right in your browser. Nothing is uploaded, so your files never leave your device.</p>
+    <ul class="badges">
+      <li>Free forever</li><li>No sign-up</li><li>Works offline</li>
+    </ul>
   </section>
+
+  <section class="toolbar">
+    <div class="chips" role="tablist" aria-label="Categories">
+      <button class="chip on" data-cat="all">All</button>
+      <button class="chip" data-cat="organize">Organize</button>
+      <button class="chip" data-cat="optimize">Optimize</button>
+      <button class="chip" data-cat="convert">Convert</button>
+      <button class="chip" data-cat="edit">Edit</button>
+    </div>
+    <label class="search"><input id="search" type="search" placeholder="Search tools" aria-label="Search tools"></label>
+  </section>
+
   <section class="grid" id="tool-grid" aria-label="Tools"></section>
+  <p class="empty" id="no-match" hidden>No tools match your search.</p>
 </main>
 
 <main id="tool" hidden>
-  <button class="back" data-home>← All tools</button>
-  <div class="tool-head">
-    <div class="tool-icon" id="tool-icon"></div>
-    <div><h1 id="tool-title"></h1><p id="tool-desc"></p></div>
+  <button class="back" data-home><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>All tools</button>
+  <div class="panel">
+    <div class="tool-head">
+      <div class="tool-icon" id="tool-icon"></div>
+      <div><h1 id="tool-title"></h1><p id="tool-desc"></p></div>
+    </div>
+
+    <label class="drop" id="drop">
+      <input type="file" id="file-input" hidden>
+      <span class="drop-ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg></span>
+      <strong id="drop-label">Choose files</strong>
+      <span>or drop them here</span>
+    </label>
+
+    <ul class="files" id="file-list"></ul>
+    <div class="pages" id="page-grid" hidden></div>
+    <form class="options" id="options"></form>
+
+    <div class="actions">
+      <button class="primary" id="run" disabled>Run</button>
+      <span class="status" id="status" role="status"></span>
+    </div>
   </div>
 
-  <label class="drop" id="drop">
-    <input type="file" id="file-input" hidden>
-    <strong id="drop-label">Choose files</strong>
-    <span>or drop them here</span>
-  </label>
-
-  <ul class="files" id="file-list"></ul>
-  <div class="pages" id="page-grid" hidden></div>
-  <form class="options" id="options"></form>
-
-  <div class="actions">
-    <button class="primary" id="run" disabled>Run</button>
-    <span class="status" id="status" role="status"></span>
-  </div>
-  <section class="results" id="results" hidden>
-    <h2>Done</h2>
+  <section class="panel results" id="results" hidden>
+    <h2>Ready to download</h2>
     <div id="result-list"></div>
   </section>
 </main>
 
-<footer class="foot">RBx9 PDF · Built with pdf-lib and PDF.js · Not affiliated with iLovePDF or Adobe.</footer>
+<footer class="foot">Developed by <strong>RBx9</strong></footer>
 <script type="module" src="app.js"></script>
 </body>
 </html>

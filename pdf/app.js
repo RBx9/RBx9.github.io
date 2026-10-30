@@ -97,13 +97,42 @@ async function rasterize(entry, { scale, quality }, progress) {
   return out.save({ useObjectStreams: true });
 }
 
+// ---------- icons ----------
+
+const ICONS = {
+  merge: '<path d="m8 6 4-4 4 4"/><path d="M12 2v10.3a4 4 0 0 1-1.17 2.87L4 22"/><path d="m20 22-5-5"/>',
+  split: '<path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.17-2.87L3 3"/><path d="m15 9 6-6"/>',
+  grid: '<rect width="7" height="7" x="3" y="3" rx="1.5"/><rect width="7" height="7" x="14" y="3" rx="1.5"/><rect width="7" height="7" x="14" y="14" rx="1.5"/><rect width="7" height="7" x="3" y="14" rx="1.5"/>',
+  trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  extract: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/>',
+  rotate: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
+  compress: '<path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="m14 10 7-7"/><path d="m3 21 7-7"/>',
+  image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
+  fileImage: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><circle cx="10" cy="12.5" r="2"/><path d="m20 17-1.1-1.1a2 2 0 0 0-2.8 0L10 22"/>',
+  hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="m16 3-2 18"/>',
+  droplet: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+  upload: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+  up: '<path d="m18 15-6-6-6 6"/>',
+  down: '<path d="m6 9 6 6 6-6"/>',
+  left: '<path d="m15 18-6-6 6-6"/>',
+  right: '<path d="m9 18 6-6-6-6"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  undo: '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+};
+
+const svg = (name, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+const gradient = (t) => `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]})`;
+
 // ---------- tools ----------
 
 const PAGE_SIZES = { a4: [595.28, 841.89], letter: [612, 792] };
 
 const TOOLS = [
   {
-    id: 'merge', title: 'Merge PDF', icon: '⊕', color: '#e5484d', accept: 'pdf', multiple: true, minFiles: 2,
+    id: 'merge', title: 'Merge PDF', icon: 'merge', colors: ['#f43f5e', '#fb923c'], category: 'organize', accept: 'pdf', multiple: true, minFiles: 2,
     desc: 'Combine several PDFs into one, in the order you choose.',
     async run({ files }) {
       const out = await PDFDocument.create();
@@ -116,7 +145,7 @@ const TOOLS = [
     },
   },
   {
-    id: 'split', title: 'Split PDF', icon: '✂', color: '#f76b15', accept: 'pdf',
+    id: 'split', title: 'Split PDF', icon: 'split', colors: ['#f97316', '#facc15'], category: 'organize', accept: 'pdf',
     desc: 'Turn page ranges, or every page, into separate PDFs.',
     options: [
       { id: 'mode', label: 'Split by', type: 'select', value: 'ranges', choices: [['ranges', 'Custom ranges'], ['every', 'Every page'], ['chunks', 'Fixed number of pages']] },
@@ -145,7 +174,7 @@ const TOOLS = [
     },
   },
   {
-    id: 'organize', title: 'Organize pages', icon: '▦', color: '#8e4ec6', accept: 'pdf', pageGrid: true,
+    id: 'organize', title: 'Organize pages', icon: 'grid', colors: ['#8b5cf6', '#d946ef'], category: 'organize', accept: 'pdf', pageGrid: true,
     desc: 'Reorder, rotate and delete pages visually.',
     async run({ files, pageState }) {
       const src = await loadPdf(files[0]);
@@ -161,7 +190,7 @@ const TOOLS = [
     },
   },
   {
-    id: 'remove', title: 'Remove pages', icon: '⌫', color: '#d6409f', accept: 'pdf',
+    id: 'remove', title: 'Remove pages', icon: 'trash', colors: ['#ec4899', '#f43f5e'], category: 'organize', accept: 'pdf',
     desc: 'Delete the pages you don’t need.',
     options: [{ id: 'ranges', label: 'Pages to remove', type: 'text', value: '1', hint: 'e.g. 2, 5-7' }],
     async run({ files, opts }) {
@@ -173,7 +202,7 @@ const TOOLS = [
     },
   },
   {
-    id: 'extract', title: 'Extract pages', icon: '⇱', color: '#0d74ce', accept: 'pdf',
+    id: 'extract', title: 'Extract pages', icon: 'extract', colors: ['#3b82f6', '#06b6d4'], category: 'organize', accept: 'pdf',
     desc: 'Pull selected pages out into a new PDF.',
     options: [{ id: 'ranges', label: 'Pages to extract', type: 'text', value: '1-3', hint: 'e.g. 1, 4-6, 9-' }],
     async run({ files, opts }) {
@@ -184,7 +213,7 @@ const TOOLS = [
     },
   },
   {
-    id: 'rotate', title: 'Rotate PDF', icon: '↻', color: '#12a594', accept: 'pdf',
+    id: 'rotate', title: 'Rotate PDF', icon: 'rotate', colors: ['#14b8a6', '#22c55e'], category: 'edit', accept: 'pdf',
     desc: 'Rotate all pages or just some of them.',
     options: [
       { id: 'angle', label: 'Rotation', type: 'select', value: '90', choices: [['90', '90° clockwise'], ['180', '180°'], ['270', '90° counter-clockwise']] },
@@ -200,7 +229,7 @@ const TOOLS = [
     },
   },
   {
-    id: 'compress', title: 'Compress PDF', icon: '⇲', color: '#30a46c', accept: 'pdf',
+    id: 'compress', title: 'Compress PDF', icon: 'compress', colors: ['#22c55e', '#84cc16'], category: 'optimize', accept: 'pdf',
     desc: 'Shrink file size by optimizing the images inside, keeping text sharp.',
     options: [{
       id: 'level', label: 'Compression', type: 'select', value: 'recommended',
@@ -229,7 +258,7 @@ const TOOLS = [
     },
   },
   {
-    id: 'img2pdf', title: 'Images to PDF', icon: '🖼', color: '#ffb224', accept: 'image', multiple: true,
+    id: 'img2pdf', title: 'Images to PDF', icon: 'image', colors: ['#f59e0b', '#ef4444'], category: 'convert', accept: 'image', multiple: true,
     desc: 'Convert JPG, PNG and other images into one PDF.',
     options: [
       { id: 'size', label: 'Page size', type: 'select', value: 'fit', choices: [['fit', 'Same as image'], ['a4', 'A4'], ['letter', 'US Letter']] },
@@ -257,7 +286,7 @@ const TOOLS = [
     },
   },
   {
-    id: 'pdf2img', title: 'PDF to images', icon: '⇄', color: '#00a2c7', accept: 'pdf',
+    id: 'pdf2img', title: 'PDF to images', icon: 'fileImage', colors: ['#06b6d4', '#6366f1'], category: 'convert', accept: 'pdf',
     desc: 'Save every page as a JPG or PNG image.',
     options: [
       { id: 'format', label: 'Format', type: 'select', value: 'jpeg', choices: [['jpeg', 'JPG'], ['png', 'PNG']] },
@@ -279,7 +308,7 @@ const TOOLS = [
     },
   },
   {
-    id: 'numbers', title: 'Add page numbers', icon: '#', color: '#5b5bd6', accept: 'pdf',
+    id: 'numbers', title: 'Add page numbers', icon: 'hash', colors: ['#6366f1', '#8b5cf6'], category: 'edit', accept: 'pdf',
     desc: 'Stamp page numbers in the position and style you want.',
     options: [
       { id: 'position', label: 'Position', type: 'select', value: 'bc', choices: [['bc', 'Bottom center'], ['br', 'Bottom right'], ['bl', 'Bottom left'], ['tc', 'Top center'], ['tr', 'Top right'], ['tl', 'Top left']] },
@@ -306,7 +335,7 @@ const TOOLS = [
     },
   },
   {
-    id: 'watermark', title: 'Watermark', icon: '💧', color: '#3e63dd', accept: 'pdf',
+    id: 'watermark', title: 'Watermark', icon: 'droplet', colors: ['#0ea5e9', '#6366f1'], category: 'edit', accept: 'pdf',
     desc: 'Stamp text diagonally across every page.',
     options: [
       { id: 'text', label: 'Text', type: 'text', value: 'CONFIDENTIAL' },
@@ -344,15 +373,40 @@ let files = [];
 let pageState = [];
 let resultUrls = [];
 
+let filter = { category: 'all', query: '' };
+
 function buildGrid() {
   const grid = $('tool-grid');
   for (const t of TOOLS) {
     const btn = document.createElement('button');
     btn.className = 'tile';
-    btn.innerHTML = `<div class="ic" style="background:${t.color}">${t.icon}</div><strong>${t.title}</strong><span>${t.desc}</span>`;
+    btn.dataset.id = t.id;
+    btn.style.setProperty('--g', gradient(t));
+    btn.innerHTML = `<div class="ic">${svg(t.icon)}</div><strong></strong><span></span>`;
+    btn.querySelector('strong').textContent = t.title;
+    btn.querySelector('span').textContent = t.desc;
     btn.addEventListener('click', () => { location.hash = t.id; });
     grid.append(btn);
   }
+  document.querySelectorAll('.chip').forEach((chip) => chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === chip));
+    filter.category = chip.dataset.cat;
+    applyFilter();
+  }));
+  $('search').addEventListener('input', (e) => { filter.query = e.target.value.trim().toLowerCase(); applyFilter(); });
+  document.querySelector('.search .i')?.remove();
+  document.querySelector('.search').insertAdjacentHTML('afterbegin', svg('search'));
+}
+
+function applyFilter() {
+  let shown = 0;
+  for (const t of TOOLS) {
+    const match = (filter.category === 'all' || t.category === filter.category)
+      && (!filter.query || `${t.title} ${t.desc}`.toLowerCase().includes(filter.query));
+    document.querySelector(`.tile[data-id=${t.id}]`).hidden = !match;
+    shown += match;
+  }
+  $('no-match').hidden = shown > 0;
 }
 
 function clearResults() {
@@ -370,8 +424,8 @@ function openTool(t) {
   setStatus('');
   $('home').hidden = true;
   $('tool').hidden = false;
-  $('tool-icon').textContent = t.icon;
-  $('tool-icon').style.background = t.color;
+  $('tool-icon').innerHTML = svg(t.icon);
+  $('tool-icon').style.background = gradient(t);
   $('tool-title').textContent = t.title;
   $('tool-desc').textContent = t.desc;
   document.title = `${t.title} · RBx9 PDF`;
@@ -454,6 +508,7 @@ function renderFiles() {
   list.replaceChildren();
   files.forEach((entry, i) => {
     const li = document.createElement('li');
+    li.insertAdjacentHTML('beforeend', `<span class="file-ic">${svg(tool.accept === 'pdf' ? 'file' : 'image')}</span>`);
     const name = document.createElement('span');
     name.className = 'name';
     name.textContent = entry.file.name;
@@ -461,20 +516,20 @@ function renderFiles() {
     meta.className = 'meta';
     meta.textContent = fmtSize(entry.file.size);
     li.append(name, meta);
-    const mk = (label, title, fn, disabled) => {
+    const mk = (icon, title, fn, disabled) => {
       const b = document.createElement('button');
       b.className = 'icon-btn';
-      b.textContent = label;
+      b.innerHTML = svg(icon);
       b.title = title;
       b.disabled = disabled;
       b.onclick = fn;
       li.append(b);
     };
     if (tool.multiple) {
-      mk('↑', 'Move up', () => { [files[i - 1], files[i]] = [files[i], files[i - 1]]; renderFiles(); }, i === 0);
-      mk('↓', 'Move down', () => { [files[i + 1], files[i]] = [files[i], files[i + 1]]; renderFiles(); }, i === files.length - 1);
+      mk('up', 'Move up', () => { [files[i - 1], files[i]] = [files[i], files[i - 1]]; renderFiles(); }, i === 0);
+      mk('down', 'Move down', () => { [files[i + 1], files[i]] = [files[i], files[i + 1]]; renderFiles(); }, i === files.length - 1);
     }
-    mk('✕', 'Remove', () => { files.splice(i, 1); pageState = []; $('page-grid').hidden = true; renderFiles(); }, false);
+    mk('x', 'Remove', () => { files.splice(i, 1); pageState = []; $('page-grid').hidden = true; renderFiles(); }, false);
     list.append(li);
   });
   $('run').disabled = files.length < (tool.minFiles || 1);
@@ -512,19 +567,19 @@ function drawPageGrid() {
     thumb.append(p.canvas);
     const ctrl = document.createElement('div');
     ctrl.className = 'ctrl';
-    const mk = (label, title, fn, disabled = false) => {
+    const mk = (icon, title, fn, disabled = false) => {
       const b = document.createElement('button');
       b.className = 'icon-btn';
-      b.textContent = label;
+      b.innerHTML = svg(icon);
       b.title = title;
       b.disabled = disabled;
       b.onclick = () => { fn(); drawPageGrid(); };
       ctrl.append(b);
     };
-    mk('←', 'Move left', () => { [pageState[i - 1], pageState[i]] = [p, pageState[i - 1]]; }, i === 0);
-    mk('↻', 'Rotate', () => { p.rotation = (p.rotation + 90) % 360; });
-    mk(p.removed ? '↺' : '🗑', p.removed ? 'Restore' : 'Delete', () => { p.removed = !p.removed; });
-    mk('→', 'Move right', () => { [pageState[i + 1], pageState[i]] = [p, pageState[i + 1]]; }, i === pageState.length - 1);
+    mk('left', 'Move left', () => { [pageState[i - 1], pageState[i]] = [p, pageState[i - 1]]; }, i === 0);
+    mk('rotate', 'Rotate', () => { p.rotation = (p.rotation + 90) % 360; });
+    mk(p.removed ? 'undo' : 'trash', p.removed ? 'Restore' : 'Delete', () => { p.removed = !p.removed; });
+    mk('right', 'Move right', () => { [pageState[i + 1], pageState[i]] = [p, pageState[i + 1]]; }, i === pageState.length - 1);
     const label = document.createElement('small');
     label.textContent = `Page ${p.index + 1}`;
     card.append(thumb, label, ctrl);
@@ -535,6 +590,7 @@ function drawPageGrid() {
 async function run() {
   const btn = $('run');
   btn.disabled = true;
+  btn.classList.add('busy');
   clearResults();
   setStatus('Working…');
   try {
@@ -546,9 +602,9 @@ async function run() {
       const a = document.createElement('a');
       a.href = url;
       a.download = r.name;
-      a.innerHTML = '<span></span><span></span>';
-      a.firstChild.textContent = `⬇ ${r.name}`;
-      a.lastChild.textContent = r.note || fmtSize(r.blob.size);
+      a.innerHTML = `<span class="dl">${svg('download')}</span><span class="rn"></span><span class="rs"></span>`;
+      a.querySelector('.rn').textContent = r.name;
+      a.querySelector('.rs').textContent = r.note || fmtSize(r.blob.size);
       list.append(a);
     }
     $('results').hidden = false;
@@ -558,6 +614,7 @@ async function run() {
     console.error(err);
     setStatus(err.message || String(err), true);
   } finally {
+    btn.classList.remove('busy');
     btn.disabled = files.length < (tool.minFiles || 1);
   }
 }
