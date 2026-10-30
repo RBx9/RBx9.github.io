@@ -16,6 +16,8 @@ To publish a release that appears in the RBx9 IPA source:
 git tag rbx9-pdf-v1.0.0 && git push origin rbx9-pdf-v1.0.0
 ```
 
+Or open **Actions → Build RBx9 PDF (iOS) → Run workflow** and enter the release tag. Bump `MARKETING_VERSION` in `project.yml` for each new version.
+
 Build locally on a Mac:
 
 ```sh
@@ -30,5 +32,6 @@ cd apps/rbx9-pdf-ios && xcodegen generate && open RBx9PDF.xcodeproj
 | `project.yml` | XcodeGen project spec (bundle ID `com.rbx9.pdf`) |
 | `Sources/Tool.swift` | Tool list, icons and options |
 | `Sources/PDFEngine.swift` | All PDF processing and `ToolRunner` |
+| `Sources/WebCompressor.swift` | Runs the web app's [`pdf/compress.js`](../../pdf/compress.js) in a hidden WKWebView to optimize the images inside PDFs |
 | `Sources/ToolView.swift` | Shared tool screen, file import, results, document scanner |
 | `Sources/RBx9PDFApp.swift` | App entry and home grid |

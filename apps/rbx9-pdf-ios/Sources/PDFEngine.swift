@@ -153,32 +153,24 @@ enum PDFEngine {
 
     // MARK: Tools
 
-    static func compress(_ file: InputFile, level: CompressionLevel, progress: (String) -> Void) throws -> (Data, String) {
-        let doc = try document(file)
-        var best = doc.dataRepresentation() ?? file.data
-        if let raster = level.raster {
-            let cg = try cgDocument(file)
-            let data = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 612, height: 792)).pdfData { ctx in
-                for n in 1...cg.numberOfPages {
-                    progress("Compressing page \(n) of \(cg.numberOfPages)…")
-                    autoreleasepool {
-                        guard let page = cg.page(at: n) else { return }
-                        let rect = CGRect(origin: .zero, size: visibleSize(page))
-                        ctx.beginPage(withBounds: rect, pageInfo: [:])
-                        // Drawing a JPEG-backed image lets Core Graphics embed the JPEG bytes as-is.
-                        if let jpeg = image(of: page, scale: raster.scale).jpegData(compressionQuality: raster.quality),
-                           let img = UIImage(data: jpeg) {
-                            img.draw(in: rect)
-                        }
+    /// Redraws every page as a JPEG. Only used by Extreme compression, when it beats image optimization.
+    static func rasterize(_ file: InputFile, scale: CGFloat, quality: CGFloat, progress: (String) -> Void) throws -> Data {
+        let cg = try cgDocument(file)
+        return UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 612, height: 792)).pdfData { ctx in
+            for n in 1...cg.numberOfPages {
+                progress("Rendering page \(n) of \(cg.numberOfPages)…")
+                autoreleasepool {
+                    guard let page = cg.page(at: n) else { return }
+                    let rect = CGRect(origin: .zero, size: visibleSize(page))
+                    ctx.beginPage(withBounds: rect, pageInfo: [:])
+                    // Drawing a JPEG-backed image lets Core Graphics embed the JPEG bytes as-is.
+                    if let jpeg = image(of: page, scale: scale).jpegData(compressionQuality: quality),
+                       let img = UIImage(data: jpeg) {
+                        img.draw(in: rect)
                     }
                 }
             }
-            if data.count < best.count { best = data }
         }
-        let before = file.data.count
-        guard best.count < before else { return (file.data, "Already well compressed") }
-        let percent = Int((Double(before - best.count) / Double(before) * 100).rounded())
-        return (best, "\(formatSize(before)) → \(formatSize(best.count)) (−\(percent)%)")
     }
 
     static func imagesToPDF(_ images: [UIImage], size option: PageSizeOption, margin: CGFloat) -> Data {
@@ -283,7 +275,7 @@ enum PDFEngine {
 enum ToolRunner {
 
     static func run(_ tool: Tool, files: [InputFile], options o: ToolOptions, pages: [PageItem],
-                    progress: @escaping (String) -> Void) throws -> [OutputFile] {
+                    progress: @escaping (String) -> Void) async throws -> [OutputFile] {
         let folder = FileManager.default.temporaryDirectory
             .appendingPathComponent("Output", isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -347,8 +339,23 @@ enum ToolRunner {
             return [try savePDF(PDFEngine.assemble(doc, pages: plan), "\(first.baseName)_rotated.pdf")]
 
         case .compress:
-            let (data, note) = try PDFEngine.compress(first, level: o.compression, progress: progress)
-            return [try save(data, "\(first.baseName)_compressed.pdf", note: note)]
+            _ = try PDFEngine.document(first)
+            progress("Optimizing images…")
+            let (shrunk, found) = try await WebCompressor.shared.shrinkImages(in: first.data, level: o.compression.key)
+            var best = shrunk
+            if let raster = o.compression.raster {
+                let pages = try PDFEngine.rasterize(first, scale: raster.scale, quality: raster.quality, progress: progress)
+                if pages.count < best.count { best = pages }
+            }
+            let before = first.data.count
+            // Under 1% isn't worth a new file.
+            guard Double(before - best.count) / Double(before) >= 0.01 else {
+                let why = found > 0 ? "Its images are already well optimized." : "It has no large images to shrink; text is already compact."
+                throw PDFToolError.message("This PDF can’t be made meaningfully smaller. \(why)")
+            }
+            let percent = Int((Double(before - best.count) / Double(before) * 100).rounded())
+            let note = "\(formatSize(before)) → \(formatSize(best.count)) (−\(percent)%)"
+            return [try save(best, "\(first.baseName)_compressed.pdf", note: note)]
 
         case .scan, .imagesToPDF:
             let images = files.compactMap { UIImage(data: $0.data) }

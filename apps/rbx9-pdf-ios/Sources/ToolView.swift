@@ -170,7 +170,7 @@ struct ToolView: View {
                     ForEach(CompressionLevel.allCases) { Text($0.rawValue).tag($0) }
                 }
             } footer: {
-                Text("Less, Recommended and Extreme redraw each page as an image, so text can no longer be selected. Lossless keeps everything as-is.")
+                Text("Images inside the PDF are resized and re-encoded; text stays sharp and selectable. Extreme may also turn pages into images if that is smaller.")
             }
         case .scan, .imagesToPDF:
             Section("Options") {
@@ -323,7 +323,7 @@ struct ToolView: View {
         Task {
             do {
                 let result = try await Task.detached(priority: .userInitiated) {
-                    try ToolRunner.run(tool, files: files, options: options, pages: pages) { message in
+                    try await ToolRunner.run(tool, files: files, options: options, pages: pages) { message in
                         Task { @MainActor in status = message }
                     }
                 }.value

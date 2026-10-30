@@ -16,6 +16,9 @@ targets:
     sources:
       - Sources
       - Resources
+      # Same compression engine as the web app.
+      - path: ../../pdf/compress.js
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: RBx9PDF

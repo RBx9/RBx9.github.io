@@ -111,18 +111,14 @@ enum SplitMode: String, CaseIterable, Identifiable {
 }
 
 enum CompressionLevel: String, CaseIterable, Identifiable {
-    case lossless = "Lossless", less = "Less", recommended = "Recommended", extreme = "Extreme"
+    case less = "Less", recommended = "Recommended", extreme = "Extreme"
     var id: String { rawValue }
 
-    /// Render scale and JPEG quality for the levels that rasterize pages.
-    var raster: (scale: CGFloat, quality: CGFloat)? {
-        switch self {
-        case .lossless: return nil
-        case .less: return (2, 0.8)
-        case .recommended: return (1.5, 0.65)
-        case .extreme: return (1, 0.45)
-        }
-    }
+    /// Level name understood by compress.js.
+    var key: String { rawValue.lowercased() }
+
+    /// Extreme also tries redrawing whole pages as JPEGs (scale, quality).
+    var raster: (scale: CGFloat, quality: CGFloat)? { self == .extreme ? (1, 0.45) : nil }
 }
 
 enum PageSizeOption: String, CaseIterable, Identifiable {

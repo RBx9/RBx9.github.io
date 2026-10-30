@@ -1,16 +1,23 @@
 name: Build RBx9 PDF (iOS)
 
 # Every push that touches the app builds an unsigned IPA and uploads it as a
-# workflow artifact. Pushing a tag like `rbx9-pdf-v1.0.0` also publishes a
-# GitHub Release with the IPA and refreshes the Feather/ESign source.
+# workflow artifact. Pushing a tag like `rbx9-pdf-v1.0.0`, or running the
+# workflow manually with a release tag, also publishes a GitHub Release with
+# the IPA and refreshes the Feather/ESign source.
 on:
   push:
     paths:
       - 'apps/rbx9-pdf-ios/**'
+      - 'pdf/compress.js'
       - '.github/workflows/build-rbx9-pdf.yml'
     tags:
       - 'rbx9-pdf-v*'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Publish a release with this tag, e.g. rbx9-pdf-v1.0.0 (leave empty to only build)'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -59,12 +66,12 @@ jobs:
           path: apps/rbx9-pdf-ios/build.log
 
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/rbx9-pdf-v')
+        if: startsWith(github.ref, 'refs/tags/rbx9-pdf-v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
-          gh release create "$TAG" RBx9PDF.ipa \
+          gh release create "$TAG" RBx9PDF.ipa --target "$GITHUB_SHA" \
             --title "RBx9 PDF ${TAG#rbx9-pdf-v}" \
             --notes "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR."
           # Releases created with GITHUB_TOKEN don't fire other workflows, so start the source update directly.
