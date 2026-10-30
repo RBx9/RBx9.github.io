@@ -3,20 +3,21 @@ import UniformTypeIdentifiers
 import WebKit
 
 /// Edit PDF: runs the web app's editor (pdf/edit.html, bundled with the app so
-/// it works offline) in a WKWebView. The app hands it the PDF, and Save comes
-/// back here as a file to share or save to Files.
+/// it works offline) in a WKWebView. The app hands it the PDF, and Save opens
+/// the share sheet to save the edited file to Files or send it. Apple Pencil
+/// works through the editor's pointer events (pressure, Pencil-only drawing).
+
 struct EditorScreen: View {
     @EnvironmentObject private var inbox: Inbox
     @Environment(\.dismiss) private var dismiss
     @State private var file: InputFile?
     @State private var showPicker = false
-    @State private var saved: SavedFile?
     @State private var errorText: String?
 
     var body: some View {
         Group {
             if let file {
-                EditorWebView(file: file, onSave: { saved = SavedFile(url: $0) }, onClose: { dismiss() })
+                EditorWebView(file: file, onClose: { dismiss() })
                     .ignoresSafeArea(edges: .bottom)
                     .toolbar(.hidden, for: .navigationBar)
             } else {
@@ -32,7 +33,6 @@ struct EditorScreen: View {
             }
             .ignoresSafeArea()
         }
-        .sheet(item: $saved) { ShareSheet(items: [$0.url]).ignoresSafeArea() }
         .onAppear {
             if file == nil, let handed = inbox.take(for: .editPDF) { file = handed }
         }
@@ -76,24 +76,8 @@ struct EditorScreen: View {
     }
 }
 
-struct SavedFile: Identifiable {
-    let id = UUID()
-    let url: URL
-}
-
-struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
-}
-
 struct EditorWebView: UIViewRepresentable {
     let file: InputFile
-    let onSave: (URL) -> Void
     let onClose: () -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -143,7 +127,7 @@ struct EditorWebView: UIViewRepresentable {
                 let url = folder.appendingPathComponent(name)
                 do {
                     try data.write(to: url, options: .atomic)
-                    parent.onSave(url)
+                    share(url, from: message.webView)
                 } catch {
                     present(UIAlertController(title: "Saving failed", message: error.localizedDescription, preferredStyle: .alert), from: message.webView)
                 }
@@ -170,12 +154,25 @@ struct EditorWebView: UIViewRepresentable {
             present(alert, from: webView) { completionHandler(false) }
         }
 
-        private func present(_ alert: UIAlertController, from view: UIView?, fallback: (() -> Void)? = nil) {
-            if alert.actions.isEmpty { alert.addAction(UIAlertAction(title: "OK", style: .default)) }
+        /// On iPad the share sheet must be a popover; it points at the Save button (top right).
+        private func share(_ url: URL, from view: WKWebView?) {
+            let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+            if let popover = sheet.popoverPresentationController, let view {
+                popover.sourceView = view
+                popover.sourceRect = CGRect(x: view.bounds.maxX - 70, y: 12, width: 50, height: 40)
+                popover.permittedArrowDirections = [.up]
+            }
+            present(sheet, from: view)
+        }
+
+        private func present(_ controller: UIViewController, from view: UIView?, fallback: (() -> Void)? = nil) {
+            if let alert = controller as? UIAlertController, alert.actions.isEmpty {
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+            }
             var top = view?.window?.rootViewController
             while let next = top?.presentedViewController { top = next }
             guard let top else { fallback?(); return }
-            top.present(alert, animated: true)
+            top.present(controller, animated: true)
         }
     }
 }

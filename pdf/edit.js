@@ -247,6 +247,34 @@ async function textLines(info) {
   return segs.map((s, i) => ({ ...s, id: `L${info.index}_${i}`, y: s.base - s.size * 0.92, h: s.size * 1.18 }));
 }
 
+// ---------- Apple Pencil ----------
+
+const DRAWING_TOOLS = ['draw', 'highlight', 'whiteout', 'rect'];
+
+// Stroke width multiplier from Pencil pressure (about 0.35–1.65; 1 for mouse and touch).
+const pressureWidth = (e) => (e.pointerType === 'pen' && e.pressure > 0 ? 0.35 + e.pressure * 1.3 : 1);
+
+function segmentSvg(a, b, color, width, ox, oy) {
+  return `<line x1="${(a[0] - ox).toFixed(1)}" y1="${(a[1] - oy).toFixed(1)}" x2="${(b[0] - ox).toFixed(1)}" y2="${(b[1] - oy).toFixed(1)}" stroke="${color}" stroke-width="${(width * ((a[2] ?? 1) + (b[2] ?? 1)) / 2).toFixed(2)}" stroke-linecap="round"/>`;
+}
+
+// The first time an Apple Pencil touches the page, drawing switches to
+// Pencil-only so fingers and palms scroll instead of leaving marks.
+function notePencil(e) {
+  if (e.pointerType !== 'pen' || state.penSeen) return;
+  state.penSeen = true;
+  setPencilOnly(true);
+}
+
+function setPencilOnly(on) {
+  state.pencilOnly = on;
+  document.body.classList.toggle('pencil-only', on);
+  $('pencil-only').hidden = !state.penSeen;
+  $('pencil-only').classList.toggle('on', on);
+}
+
+$('pencil-only').addEventListener('click', () => setPencilOnly(!state.pencilOnly));
+
 // ---------- objects ----------
 
 const uid = () => `o${state.nextId++}`;
@@ -376,8 +404,10 @@ function objectElement(o) {
     el.style.background = o.color;
     el.style.opacity = 0.4;
   } else if (o.type === 'path') {
-    const pts = o.points.map(([x, y]) => `${(x - o.x).toFixed(1)},${(y - o.y).toFixed(1)}`).join(' ');
-    el.innerHTML = `<svg width="${o.w}" height="${o.h}"><polyline points="${pts}" fill="none" stroke="${o.color}" stroke-width="${o.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    const shape = o.pressure
+      ? o.points.slice(1).map((b, i) => segmentSvg(o.points[i], b, o.color, o.strokeWidth, o.x, o.y)).join('')
+      : `<polyline points="${o.points.map(([x, y]) => `${(x - o.x).toFixed(1)},${(y - o.y).toFixed(1)}`).join(' ')}" fill="none" stroke="${o.color}" stroke-width="${o.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    el.innerHTML = `<svg width="${o.w}" height="${o.h}">${shape}</svg>`;
   }
   if (state.selected === o.id && state.editing !== o.id) {
     el.classList.add('selected');
@@ -531,8 +561,14 @@ function attachLayer(info) {
     const el = e.target.closest('.obj.text');
     if (el) startEditing(el.dataset.id);
   });
+  // Stop the page scrolling under the Pencil while drawing; fingers still scroll.
+  layer.addEventListener('touchstart', (e) => {
+    if (DRAWING_TOOLS.includes(state.tool) && [...e.changedTouches].some((t) => t.touchType === 'stylus')) e.preventDefault();
+  }, { passive: false });
   layer.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 || e.target.closest('[contenteditable=true]')) return;
+    notePencil(e);
+    if (state.pencilOnly && e.pointerType === 'touch' && DRAWING_TOOLS.includes(state.tool)) return; // finger scrolls
     const [x, y] = toPage(info, e);
     const objEl = e.target.closest('.obj');
     const tool = state.tool;
@@ -563,9 +599,12 @@ function attachLayer(info) {
 }
 
 function trackPointer(target, e, onMove, onUp) {
-  target.setPointerCapture?.(e.pointerId);
-  const move = (ev) => onMove(ev);
+  try { target.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
+  // Only follow the pointer that started the gesture, so a resting palm or a
+  // second finger can't disturb an Apple Pencil stroke.
+  const move = (ev) => { if (ev.pointerId === e.pointerId) onMove(ev); };
   const up = (ev) => {
+    if (ev.pointerId !== e.pointerId) return;
     target.removeEventListener('pointermove', move);
     target.removeEventListener('pointerup', up);
     target.removeEventListener('pointercancel', up);
@@ -588,7 +627,7 @@ function drag(info, e, obj, mode, start) {
     if (mode === 'move') {
       obj.x = orig.x + dx;
       obj.y = orig.y + dy;
-      if (obj.points) obj.points = orig.points.map(([px, py]) => [px + dx, py + dy]);
+      if (obj.points) obj.points = orig.points.map(([px, py, ...rest]) => [px + dx, py + dy, ...rest]);
     } else if (obj.type === 'text') {
       // Resizing text scales its font.
       obj.size = Math.max(4, orig.size * Math.max(0.2, (orig.w + dx) / orig.w));
@@ -613,22 +652,29 @@ function drag(info, e, obj, mode, start) {
 }
 
 function drawPath(info, e, start) {
-  const points = [start];
-  const obj = { page: info.index, type: 'path', points, color: state.color, strokeWidth: state.stroke, x: start[0], y: start[1], w: 1, h: 1 };
+  const pen = e.pointerType === 'pen';
+  const points = [[start[0], start[1], pressureWidth(e)]];
+  const obj = { page: info.index, type: 'path', points, color: state.color, strokeWidth: state.stroke, pressure: pen, x: start[0], y: start[1], w: 1, h: 1 };
   const preview = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   Object.assign(preview.style, { position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' });
   preview.setAttribute('width', info.viewport.width);
   preview.setAttribute('height', info.viewport.height);
   const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   Object.entries({ fill: 'none', stroke: state.color, 'stroke-width': state.stroke, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }).forEach(([k, v]) => line.setAttribute(k, v));
-  preview.append(line);
+  if (!pen) preview.append(line);
   info.layer.append(preview);
   trackPointer(info.layer, e, (ev) => {
-    const p = toPage(info, ev);
-    const last = points[points.length - 1];
-    if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 0.8) return;
-    points.push(p);
-    line.setAttribute('points', points.map((q) => q.join(',')).join(' '));
+    // Coalesced events carry every sample the Pencil reported, for smoother lines.
+    const samples = ev.getCoalescedEvents?.().length ? ev.getCoalescedEvents() : [ev];
+    for (const sample of samples) {
+      const p = toPage(info, sample);
+      const last = points[points.length - 1];
+      if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 0.6) continue;
+      const next = [p[0], p[1], pen ? last[2] * 0.6 + pressureWidth(sample) * 0.4 : 1];
+      points.push(next);
+      if (pen) preview.insertAdjacentHTML('beforeend', segmentSvg(last, next, state.color, state.stroke, 0, 0));
+    }
+    if (!pen) line.setAttribute('points', points.map((q) => `${q[0]},${q[1]}`).join(' '));
   }, () => {
     preview.remove();
     if (points.length < 2) return;
@@ -742,16 +788,22 @@ pad.addEventListener('pointerdown', (e) => {
   const at = (ev) => [(ev.clientX - r.left) * (pad.width / r.width), (ev.clientY - r.top) * (pad.height / r.height)];
   const stroke = [at(e)];
   sign.strokes.push(stroke);
-  Object.assign(padCtx, { strokeStyle: '#111827', lineWidth: 5, lineCap: 'round', lineJoin: 'round' });
+  Object.assign(padCtx, { strokeStyle: '#111827', lineCap: 'round', lineJoin: 'round' });
   pad.setPointerCapture(e.pointerId);
+  let width = pressureWidth(e);
   const move = (ev) => {
-    const p = at(ev);
-    const last = stroke[stroke.length - 1];
-    padCtx.beginPath();
-    padCtx.moveTo(...last);
-    padCtx.lineTo(...p);
-    padCtx.stroke();
-    stroke.push(p);
+    const samples = ev.getCoalescedEvents?.().length ? ev.getCoalescedEvents() : [ev];
+    for (const sample of samples) {
+      const p = at(sample);
+      const last = stroke[stroke.length - 1];
+      width = width * 0.6 + pressureWidth(sample) * 0.4;
+      padCtx.lineWidth = 5 * width;
+      padCtx.beginPath();
+      padCtx.moveTo(...last);
+      padCtx.lineTo(...p);
+      padCtx.stroke();
+      stroke.push(p);
+    }
   };
   const up = () => { pad.removeEventListener('pointermove', move); pad.removeEventListener('pointerup', up); };
   pad.addEventListener('pointermove', move);
@@ -909,6 +961,12 @@ async function save() {
       } else if (o.type === 'image') {
         const [x, y] = P(o.x, o.y + o.h);
         page.drawImage(await image(o.image), { x, y, width: o.w, height: o.h, rotate: rot });
+      } else if (o.type === 'path' && o.pressure) {
+        for (let i = 1; i < o.points.length; i++) {
+          const [a, b] = [o.points[i - 1], o.points[i]];
+          const [x1, y1] = P(a[0], a[1]), [x2, y2] = P(b[0], b[1]);
+          page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: o.strokeWidth * (a[2] + b[2]) / 2, color: hexToRgb(o.color), lineCap: LineCapStyle.Round });
+        }
       } else if (o.type === 'path') {
         const d = o.points.map(([px, py], i) => { const [x, y] = P(px, py); return `${i ? 'L' : 'M'}${x.toFixed(2)} ${(-y).toFixed(2)}`; }).join(' ');
         page.drawSvgPath(d, { x: 0, y: 0, borderColor: hexToRgb(o.color), borderWidth: o.strokeWidth, borderLineCap: LineCapStyle.Round });
