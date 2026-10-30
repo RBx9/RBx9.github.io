@@ -112,6 +112,15 @@
     "category": "productivity",
     "versions": [
       {
+        "version": "1.1.0",
+        "buildVersion": "2",
+        "date": "2026-10-30T10:29:19Z",
+        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-pdf-v1.1.0/RBx9PDF.ipa",
+        "size": 1520955,
+        "minOSVersion": "16.0",
+        "localizedDescription": "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR."
+      },
+      {
         "version": "1.0.0",
         "buildVersion": "1",
         "date": "2026-10-30T10:06:44Z",
