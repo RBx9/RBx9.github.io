@@ -2,8 +2,8 @@
 // files are never uploaded anywhere.
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRawStream, StandardFonts, degrees, rgb } from './vendor/pdf-lib.esm.min.js';
 import * as pdfjsLib from './vendor/pdf.min.mjs';
-import './compress.js?v=6';
-import './docx.js?v=6';
+import './compress.js?v=7';
+import './docx.js?v=7';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdf.worker.min.mjs';
 const { LEVELS: COMPRESS_LEVELS } = globalThis.RBx9Compress;

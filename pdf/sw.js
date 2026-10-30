@@ -1,7 +1,7 @@
 // Offline cache for RBx9 PDF. Bump VERSION (and the ?v= in index.html/app.js)
 // whenever app files change.
-const VERSION = 'rbx9-pdf-v6';
-const FILES = ['./', 'index.html', 'app.css?v=6', 'app.js?v=6', 'compress.js?v=6', 'docx.js?v=6', 'edit.html', 'edit.css?v=6', 'edit.js?v=6', 'icon.svg', 'icon-180.png', 'manifest.webmanifest',
+const VERSION = 'rbx9-pdf-v7';
+const FILES = ['./', 'index.html', 'app.css?v=7', 'app.js?v=7', 'compress.js?v=7', 'docx.js?v=7', 'edit.html', 'edit.css?v=7', 'edit.js?v=7', 'icon.svg', 'icon-180.png', 'manifest.webmanifest',
   'vendor/pdf-lib.esm.min.js', 'vendor/pdf.min.mjs', 'vendor/pdf.worker.min.mjs'];
 
 self.addEventListener('install', (e) => e.waitUntil(caches.open(VERSION).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())));

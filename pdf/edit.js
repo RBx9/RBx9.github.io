@@ -9,6 +9,7 @@ import * as pdfjsLib from './vendor/pdf.min.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdf.worker.min.mjs';
 
 const $ = (id) => document.getElementById(id);
+const host = window.webkit?.messageHandlers?.rbx9 || null;
 
 const ICONS = {
   select: '<path d="m4 4 7.07 17 2.51-7.39L21 11.07z"/>',
@@ -928,13 +929,18 @@ async function save() {
       }
     }
     const bytes = await out.save();
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-    a.download = `${state.file.name.replace(/\.pdf$/i, '')}_edited.pdf`;
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    const name = `${state.file.name.replace(/\.pdf$/i, '')}_edited.pdf`;
+    if (host) {
+      host.postMessage({ action: 'save', name, data: await toBase64(bytes) });
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      a.download = name;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    }
     state.savedAt = state.undo.length;
   } catch (err) {
     console.error(err);
@@ -946,3 +952,39 @@ async function save() {
 }
 
 syncProps();
+
+// ---------- iOS app host ----------
+// Inside the RBx9 PDF app the editor runs in a WKWebView: the app hands over
+// the PDF, and Save/Done go back to the app instead of downloading.
+
+function toBase64(bytes) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.slice(reader.result.indexOf(',') + 1));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(new Blob([bytes]));
+  });
+}
+
+if (host) {
+  document.body.classList.add('in-app');
+  $('save').textContent = 'Save';
+  const done = document.createElement('button');
+  done.className = 'ghost done';
+  done.textContent = 'Done';
+  done.addEventListener('click', () => {
+    if (state.editing) finishEditing();
+    const unsaved = state.undo.length && state.undo.length !== state.savedAt;
+    if (!unsaved || confirm('Close without saving your changes?')) host.postMessage({ action: 'close' });
+  });
+  document.querySelector('header.top .brand').replaceWith(done);
+  window.RBx9Editor = {
+    open(b64, name) {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return openFile(new File([bytes], name, { type: 'application/pdf' }));
+    },
+  };
+  host.postMessage({ action: 'ready' });
+}
