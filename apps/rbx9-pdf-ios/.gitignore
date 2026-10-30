@@ -1,0 +1,5 @@
+RBx9PDF.xcodeproj/
+build/
+Payload/
+*.ipa
+build.log
