@@ -35,7 +35,7 @@
         },
         {
           "class": "DepictionMarkdownView",
-          "markdown": "- Battery percentage with an open circular charge ring\n- Wi‑Fi indicator in the center and four cellular dots\n- Light and dark status-bar appearances\n- Special colors for low battery, charging, and Low Power Mode\n- **Settings → DuoBar → Enable DuoBar** to turn it on or restore the original icons\n- Control Center battery percentage and rotation-lock overlap fixes\n- Custom Settings icon, organized options, and direct RBx9 Repo / Sileo links\n- Adjustable DuoBar Size slider from **70% to 140%** with live updates and Reset Size to 100%\n- **New v0.2.6:** Transparent Settings icon and Report a Bug / Help Test Other iOS Versions email shortcuts\n- Updated to the v0.2.6 codebase, including the Personal Hotspot chain-link inside the ring and Control Center layout fixes\n- **v0.2.7:** Improvements and overall polish\n- **v2.7.1:** Simplified version numbering; all familiar DuoBar features remain"
+          "markdown": "- Battery percentage with an open circular charge ring\n- Wi‑Fi indicator in the center and four cellular dots\n- Light and dark status-bar appearances\n- Special colors for low battery, charging, and Low Power Mode\n- **Settings → DuoBar → Enable DuoBar** to turn it on or restore the original icons\n- Control Center battery percentage and rotation-lock overlap fixes\n- Custom Settings icon, organized options, and direct RBx9 Repo / Sileo links\n- Adjustable DuoBar Size slider from **70% to 140%** with live updates and Reset Size to 100%\n- **New v0.2.6:** Transparent Settings icon and Report a Bug / Help Test Other iOS Versions email shortcuts\n- Updated to the v0.2.6 codebase, including the Personal Hotspot chain-link inside the ring and Control Center layout fixes\n- **v0.2.7:** Improvements and overall polish\n- **v2.7.1:** Simplified version numbering; all familiar DuoBar features remain\n- **v2.7.2:** No more jump when Control Center closes; DuoBar lands exactly in place\n- **v2.7.2:** Compact 5G/LTE label inside the ring\n- **v2.7.2:** Larger sizes stay on screen on Home-button iPhones; no stock battery flash during rotation and Control Center transitions\n- **v2.7.2:** Safer loading: features switch off on their own if iOS lacks a method they need"
         },
         {
           "class": "DepictionHeaderView",
@@ -43,20 +43,20 @@
         },
         {
           "class": "DepictionMarkdownView",
-          "markdown": "**iOS 16.x · standard Rootless / Dopamine only** (`iphoneos-arm64`, installation at `/var/jb`). Requires Rootless tweak injection and PreferenceLoader. **Not compatible with RootHide**; choose DuoBar (RootHide) for that jailbreak."
+          "markdown": "**iOS 16.0–16.7.x with standard Rootless** (`iphoneos-arm64`, installed in `/var/jb`), on an iOS 16 build the jailbreak supports: **Dopamine** on iPhone XS, XS Max, XR, 11 series, SE (2nd and 3rd generation), 12 series, 13 series and 14 series; **palera1n** on iPhone 8, 8 Plus and X. Requires tweak injection and PreferenceLoader. **Not compatible with RootHide**; choose DuoBar (RootHide) for that.\n\n**Not supported:** iOS 17, 18 and 26; iPhone 15 and newer."
         },
         {
           "class": "DepictionHeaderView",
-          "title": "Initial Rootless build"
+          "title": "Testing"
         },
         {
           "class": "DepictionMarkdownView",
-          "markdown": "The Rootless package **compiled and passed architecture, `/var/jb` layout, package-metadata and Settings icon checks**. It has **not yet been confirmed on a Rootless iPhone**. Please report whether the status-bar display, size slider and Control Center work correctly. Do not install alongside DuoBar (RootHide)."
+          "markdown": "Tested on an **iPhone 14 Pro Max with iOS 16.4.1** (stable, smooth Control Center closing) and in the iOS 16.4 simulator on the iPhone 12, 13 mini, 14, 14 Pro, 14 Pro Max and SE at 70%, 100% and 140%. Do not install both DuoBar (RootHide) and DuoBar (Rootless)."
         },
         {
           "class": "DepictionTableTextView",
           "title": "Version",
-          "text": "2.7.1"
+          "text": "2.7.2"
         },
         {
           "class": "DepictionTableTextView",
@@ -66,7 +66,7 @@
         {
           "class": "DepictionButtonView",
           "text": "View source code and releases",
-          "action": "https://github.com/RBx9/DuoBar/releases/tag/v2.7.1"
+          "action": "https://github.com/RBx9/DuoBar/releases/tag/v2.7.2"
         }
       ]
     }
