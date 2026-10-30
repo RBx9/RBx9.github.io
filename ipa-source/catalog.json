@@ -102,5 +102,24 @@
         "minOSVersion": "13.0"
       }
     ]
+  },
+  "com.rbx9.pdf": {
+    "name": "RBx9 PDF",
+    "developerName": "RBx9",
+    "subtitle": "Download and sideload this iOS app",
+    "localizedDescription": "Available in the RBx9 IPA Library.",
+    "iconURL": "https://rbx9.github.io/icon.png",
+    "category": "utilities",
+    "versions": [
+      {
+        "version": "1.0.0",
+        "buildVersion": "1",
+        "date": "2026-10-30T10:06:44Z",
+        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-pdf-v1.0.0/RBx9PDF.ipa",
+        "size": 803820,
+        "minOSVersion": "16.0",
+        "localizedDescription": "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR."
+      }
+    ]
   }
 }
