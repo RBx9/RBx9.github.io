@@ -1,8 +1,9 @@
 <!doctype html>
 <meta charset="utf-8">
-<!-- Hidden page the iOS app loads to run the shared compress.js engine. -->
+<!-- Hidden page the iOS app loads to run the shared compress.js and docx.js engines. -->
 <script src="pdf-lib.min.js"></script>
 <script src="compress.js"></script>
+<script src="docx.js"></script>
 <script>
 const { shrinkImages } = RBx9Compress.create(PDFLib);
 
@@ -27,5 +28,10 @@ async function compressPDF(b64, level) {
   const doc = await PDFLib.PDFDocument.load(fromBase64(b64));
   const found = await shrinkImages(doc, RBx9Compress.LEVELS[level]);
   return { data: await toBase64(await doc.save({ useObjectStreams: true })), found };
+}
+
+// pagesJSON: extracted pages from the app; returns the .docx as base64.
+async function makeDocx(pagesJSON) {
+  return toBase64(await RBx9Docx.build(JSON.parse(pagesJSON)));
 }
 </script>

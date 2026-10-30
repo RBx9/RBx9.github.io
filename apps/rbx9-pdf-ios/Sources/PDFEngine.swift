@@ -341,7 +341,7 @@ enum ToolRunner {
         case .compress:
             _ = try PDFEngine.document(first)
             progress("Optimizing images…")
-            let (shrunk, found) = try await WebCompressor.shared.shrinkImages(in: first.data, level: o.compression.key)
+            let (shrunk, found) = try await WebEngine.shared.shrinkImages(in: first.data, level: o.compression.key)
             var best = shrunk
             if let raster = o.compression.raster {
                 let pages = try PDFEngine.rasterize(first, scale: raster.scale, quality: raster.quality, progress: progress)
@@ -362,6 +362,15 @@ enum ToolRunner {
             if images.isEmpty { throw PDFToolError.message("None of the images could be read.") }
             let name = tool == .scan ? "Scan.pdf" : (files.count == 1 ? "\(first.baseName).pdf" : "Images.pdf")
             return [try save(PDFEngine.imagesToPDF(images, size: o.pageSize, margin: o.margin.points), name)]
+
+        case .pdfToWord:
+            let (json, chars, ocrPages) = try WordExtractor.extract(first, progress: progress)
+            progress("Building Word document…")
+            let data = try await WebEngine.shared.makeDocx(pagesJSON: json)
+            var note = formatSize(data.count)
+            if ocrPages > 0 { note += " · text recognized on \(ocrPages) scanned page\(ocrPages == 1 ? "" : "s")" }
+            else if chars == 0 { note += " · no text found" }
+            return [try save(data, "\(first.baseName).docx", note: note)]
 
         case .pdfToImages:
             let doc = try PDFEngine.cgDocument(first)
