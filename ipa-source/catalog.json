@@ -106,10 +106,10 @@
   "com.rbx9.pdf": {
     "name": "RBx9 PDF",
     "developerName": "RBx9",
-    "subtitle": "Download and sideload this iOS app",
-    "localizedDescription": "Available in the RBx9 IPA Library.",
-    "iconURL": "https://rbx9.github.io/icon.png",
-    "category": "utilities",
+    "subtitle": "Private PDF tools that run on your iPhone",
+    "localizedDescription": "Merge, split, organize, compress, rotate, scan, convert, number, watermark, password-protect, unlock and OCR PDFs. Everything runs on your device, so files are never uploaded. Also available on the web at https://rbx9.github.io/pdf/",
+    "iconURL": "https://rbx9.github.io/pdf/icon-512.png",
+    "category": "productivity",
     "versions": [
       {
         "version": "1.0.0",
@@ -120,6 +120,7 @@
         "minOSVersion": "16.0",
         "localizedDescription": "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR."
       }
-    ]
+    ],
+    "tintColor": "#3D63E0"
   }
 }
