@@ -46,6 +46,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             build | tee build.log | grep -E 'error:|warning:|BUILD (SUCCEEDED|FAILED)' || true
           test -d build/Release-iphoneos/RBx9PDF.app
+          plutil -p build/Release-iphoneos/RBx9PDF.app/Info.plist
 
       - name: Package IPA
         run: |

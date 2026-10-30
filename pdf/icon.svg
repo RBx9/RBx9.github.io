@@ -1,1 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f74ff"/><stop offset="1" stop-color="#2140b8"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#g)"/><path d="M160 96h140l84 84v236a24 24 0 0 1-24 24H160a24 24 0 0 1-24-24V120a24 24 0 0 1 24-24z" fill="#fff"/><path d="M300 96v60a24 24 0 0 0 24 24h60z" fill="#c9d5ff"/><rect x="168" y="300" width="176" height="76" rx="14" fill="#e5484d"/><text x="256" y="353" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-weight="800" font-size="50" fill="#fff">PDF</text><rect x="172" y="200" width="124" height="16" rx="8" fill="#c9d5ff"/><rect x="172" y="240" width="168" height="16" rx="8" fill="#c9d5ff"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366F1"/>
+      <stop offset=".55" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#EC4899"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".2" cy=".1" r=".8">
+      <stop offset="0" stop-color="#fff" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#EC4899"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#1E1B4B" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="114" fill="url(#glow)"/>
+  <rect x="150" y="104" width="214" height="276" rx="34" fill="#fff" opacity=".32" transform="rotate(-10 257 242)"/>
+  <g filter="url(#sh)">
+    <path d="M178 120h118l80 80v176a34 34 0 0 1-34 34H178a34 34 0 0 1-34-34V154a34 34 0 0 1 34-34z" fill="#fff"/>
+    <path d="M296 120v52a28 28 0 0 0 28 28h52z" fill="#E0E7FF"/>
+  </g>
+  <rect x="178" y="220" width="104" height="18" rx="9" fill="#C7D2FE"/>
+  <rect x="178" y="256" width="164" height="18" rx="9" fill="#E0E7FF"/>
+  <rect x="178" y="308" width="164" height="70" rx="20" fill="url(#ink)"/>
+  <text x="260" y="356" text-anchor="middle" font-family="-apple-system,'SF Pro Display','Helvetica Neue',Arial,sans-serif" font-weight="800" font-size="40" letter-spacing="3" fill="#fff">PDF</text>
+</svg>
