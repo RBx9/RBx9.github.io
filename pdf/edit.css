@@ -77,3 +77,11 @@
   .hint{display:none}
   .prop input[type=range]{width:80px}
 }
+
+/* Running inside the iOS app */
+.in-app .top{padding-top:max(14px,env(safe-area-inset-top))}
+.in-app .aurora{display:none}
+.in-app #start{display:none}
+.in-app .doc-name{display:block;flex:1;max-width:none}
+.in-app .top-actions{flex:1}
+.ghost.done{padding:9px 14px}

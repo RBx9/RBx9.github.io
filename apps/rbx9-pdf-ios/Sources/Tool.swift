@@ -22,6 +22,7 @@ enum InputKind {
 }
 
 enum Tool: String, CaseIterable, Identifiable {
+    case editPDF
     case merge, split, organize, remove, extract, rotate, compress
     case scan, pdfToWord, imagesToPDF, pdfToImages
     case pageNumbers, watermark, protect, unlock, extractText
@@ -30,6 +31,7 @@ enum Tool: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .editPDF: return "Edit PDF"
         case .merge: return "Merge PDF"
         case .split: return "Split PDF"
         case .organize: return "Organize Pages"
@@ -51,6 +53,7 @@ enum Tool: String, CaseIterable, Identifiable {
 
     var subtitle: String {
         switch self {
+        case .editPDF: return "Change text, add text, images, signatures and drawings."
         case .merge: return "Combine PDFs in the order you want."
         case .split: return "Turn ranges or every page into separate PDFs."
         case .organize: return "Reorder, rotate and delete pages."
@@ -72,6 +75,7 @@ enum Tool: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
+        case .editPDF: return "pencil.and.outline"
         case .merge: return "doc.on.doc"
         case .split: return "scissors"
         case .organize: return "square.grid.2x2"
@@ -95,6 +99,7 @@ enum Tool: String, CaseIterable, Identifiable {
     var colors: [Color] {
         let hex: (UInt32, UInt32)
         switch self {
+        case .editPDF: hex = (0x8B5CF6, 0xEC4899)
         case .merge: hex = (0xF43F5E, 0xFB923C)
         case .split: hex = (0xF97316, 0xFACC15)
         case .organize: hex = (0x8B5CF6, 0xD946EF)

@@ -294,6 +294,9 @@ enum ToolRunner {
         guard let first = files.first else { throw PDFToolError.message("Choose a file first.") }
 
         switch tool {
+        case .editPDF:
+            throw PDFToolError.message("Edit PDF has its own screen.")
+
         case .merge:
             return [try savePDF(try PDFEngine.merge(files), "Merged.pdf")]
 

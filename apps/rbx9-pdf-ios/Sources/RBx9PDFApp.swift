@@ -107,7 +107,9 @@ struct HomeView: View {
                     }
                 }
             }
-            .navigationDestination(for: Tool.self) { ToolView(tool: $0) }
+            .navigationDestination(for: Tool.self) { tool in
+                if tool == .editPDF { EditorScreen() } else { ToolView(tool: tool) }
+            }
         }
         .onAppear(perform: loadOrder)
         .onChange(of: order) { tools in storedOrder = tools.map(\.rawValue).joined(separator: ",") }
@@ -145,8 +147,12 @@ struct HomeView: View {
     private func loadOrder() {
         guard order.isEmpty else { return }
         let saved = storedOrder.split(separator: ",").compactMap { Tool(rawValue: String($0)) }
-        // Keep the saved order, then append any tools added in newer versions.
-        order = saved + Tool.allCases.filter { !saved.contains($0) }
+        // Keep the saved order; tools added in newer versions go in at their default position.
+        var tools = saved
+        for (index, tool) in Tool.allCases.enumerated() where !tools.contains(tool) {
+            tools.insert(tool, at: min(index, tools.count))
+        }
+        order = tools
     }
 
     private func move(_ tool: Tool, to index: Int) {
