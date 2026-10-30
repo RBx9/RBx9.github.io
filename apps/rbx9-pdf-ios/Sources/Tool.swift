@@ -1,0 +1,196 @@
+import SwiftUI
+
+enum InputKind {
+    case pdf, images, scan
+}
+
+enum Tool: String, CaseIterable, Identifiable {
+    case merge, split, organize, remove, extract, rotate, compress
+    case scan, imagesToPDF, pdfToImages
+    case pageNumbers, watermark, protect, unlock, extractText
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .merge: return "Merge PDF"
+        case .split: return "Split PDF"
+        case .organize: return "Organize Pages"
+        case .remove: return "Remove Pages"
+        case .extract: return "Extract Pages"
+        case .rotate: return "Rotate PDF"
+        case .compress: return "Compress PDF"
+        case .scan: return "Scan to PDF"
+        case .imagesToPDF: return "Images to PDF"
+        case .pdfToImages: return "PDF to Images"
+        case .pageNumbers: return "Page Numbers"
+        case .watermark: return "Watermark"
+        case .protect: return "Protect PDF"
+        case .unlock: return "Unlock PDF"
+        case .extractText: return "PDF to Text (OCR)"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .merge: return "Combine PDFs in the order you want."
+        case .split: return "Turn ranges or every page into separate PDFs."
+        case .organize: return "Reorder, rotate and delete pages."
+        case .remove: return "Delete pages you don’t need."
+        case .extract: return "Pull selected pages into a new PDF."
+        case .rotate: return "Rotate all pages or just some."
+        case .compress: return "Make the file smaller."
+        case .scan: return "Use the camera to scan paper documents."
+        case .imagesToPDF: return "Convert photos and images into a PDF."
+        case .pdfToImages: return "Save every page as a JPG or PNG."
+        case .pageNumbers: return "Stamp page numbers on every page."
+        case .watermark: return "Stamp text across every page."
+        case .protect: return "Add a password to a PDF."
+        case .unlock: return "Remove a PDF password you know."
+        case .extractText: return "Get the text out, even from scans."
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .merge: return "doc.on.doc"
+        case .split: return "scissors"
+        case .organize: return "square.grid.2x2"
+        case .remove: return "trash"
+        case .extract: return "arrow.up.doc"
+        case .rotate: return "rotate.right"
+        case .compress: return "arrow.down.right.and.arrow.up.left"
+        case .scan: return "doc.viewfinder"
+        case .imagesToPDF: return "photo.on.rectangle"
+        case .pdfToImages: return "photo"
+        case .pageNumbers: return "number"
+        case .watermark: return "drop"
+        case .protect: return "lock"
+        case .unlock: return "lock.open"
+        case .extractText: return "text.viewfinder"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .merge: return .red
+        case .split: return .orange
+        case .organize: return .purple
+        case .remove: return .pink
+        case .extract: return .blue
+        case .rotate: return .teal
+        case .compress: return .green
+        case .scan: return .indigo
+        case .imagesToPDF: return .yellow
+        case .pdfToImages: return .cyan
+        case .pageNumbers: return .indigo
+        case .watermark: return .blue
+        case .protect: return .gray
+        case .unlock: return .brown
+        case .extractText: return .mint
+        }
+    }
+
+    var input: InputKind {
+        switch self {
+        case .scan: return .scan
+        case .imagesToPDF: return .images
+        default: return .pdf
+        }
+    }
+
+    var allowsMultiple: Bool { self == .merge || self == .imagesToPDF || self == .scan }
+    var minimumFiles: Int { self == .merge ? 2 : 1 }
+}
+
+// MARK: - Options
+
+enum SplitMode: String, CaseIterable, Identifiable {
+    case ranges = "Custom ranges", every = "Every page", chunks = "Fixed size"
+    var id: String { rawValue }
+}
+
+enum CompressionLevel: String, CaseIterable, Identifiable {
+    case lossless = "Lossless", less = "Less", recommended = "Recommended", extreme = "Extreme"
+    var id: String { rawValue }
+
+    /// Render scale and JPEG quality for the levels that rasterize pages.
+    var raster: (scale: CGFloat, quality: CGFloat)? {
+        switch self {
+        case .lossless: return nil
+        case .less: return (2, 0.8)
+        case .recommended: return (1.5, 0.65)
+        case .extreme: return (1, 0.45)
+        }
+    }
+}
+
+enum PageSizeOption: String, CaseIterable, Identifiable {
+    case fit = "Same as image", a4 = "A4", letter = "US Letter"
+    var id: String { rawValue }
+}
+
+enum MarginOption: String, CaseIterable, Identifiable {
+    case none = "None", small = "Small", large = "Large"
+    var id: String { rawValue }
+    var points: CGFloat { self == .none ? 0 : self == .small ? 18 : 36 }
+}
+
+enum ImageFormat: String, CaseIterable, Identifiable {
+    case jpeg = "JPG", png = "PNG"
+    var id: String { rawValue }
+}
+
+enum NumberPosition: String, CaseIterable, Identifiable {
+    case bottomCenter = "Bottom center", bottomRight = "Bottom right", bottomLeft = "Bottom left"
+    case topCenter = "Top center", topRight = "Top right", topLeft = "Top left"
+    var id: String { rawValue }
+}
+
+enum NumberFormat: String, CaseIterable, Identifiable {
+    case plain = "1", page = "Page 1", slash = "1 / 10", pageOf = "Page 1 of 10"
+
+    var id: String { rawValue }
+
+    func text(_ n: Int, of total: Int) -> String {
+        switch self {
+        case .plain: return "\(n)"
+        case .page: return "Page \(n)"
+        case .slash: return "\(n) / \(total)"
+        case .pageOf: return "Page \(n) of \(total)"
+        }
+    }
+}
+
+struct ToolOptions {
+    var splitMode = SplitMode.ranges
+    var splitRanges = "1-2, 3-"
+    var chunkSize = 2
+    var removeRanges = "1"
+    var extractRanges = "1-3"
+    var rotateAngle = 90
+    var rotateRanges = ""
+    var compression = CompressionLevel.recommended
+    var pageSize = PageSizeOption.fit
+    var margin = MarginOption.none
+    var imageFormat = ImageFormat.jpeg
+    var dpi = 150
+    var numberPosition = NumberPosition.bottomCenter
+    var numberFormat = NumberFormat.plain
+    var firstNumber = 1
+    var numberFontSize: Double = 11
+    var watermarkText = "CONFIDENTIAL"
+    var watermarkSize: Double = 60
+    var watermarkOpacity: Double = 0.2
+    var watermarkDiagonal = true
+    var password = ""
+    var confirmPassword = ""
+}
+
+/// One page in the Organize tool's editable list.
+struct PageItem: Identifiable {
+    let id = UUID()
+    let index: Int
+    var rotation = 0
+    let thumbnail: UIImage
+}

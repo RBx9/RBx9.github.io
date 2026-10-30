@@ -1,0 +1,71 @@
+name: Build RBx9 PDF (iOS)
+
+# Every push that touches the app builds an unsigned IPA and uploads it as a
+# workflow artifact. Pushing a tag like `rbx9-pdf-v1.0.0` also publishes a
+# GitHub Release with the IPA and refreshes the Feather/ESign source.
+on:
+  push:
+    paths:
+      - 'apps/rbx9-pdf-ios/**'
+      - '.github/workflows/build-rbx9-pdf.yml'
+    tags:
+      - 'rbx9-pdf-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: apps/rbx9-pdf-ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build unsigned app
+        run: |
+          set -o pipefail
+          xcodebuild -project RBx9PDF.xcodeproj -target RBx9PDF \
+            -configuration Release -sdk iphoneos \
+            SYMROOT="$PWD/build" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tee build.log | grep -E 'error:|warning:|BUILD (SUCCEEDED|FAILED)' || true
+          test -d build/Release-iphoneos/RBx9PDF.app
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Release-iphoneos/RBx9PDF.app Payload/
+          zip -qry RBx9PDF.ipa Payload
+          ls -lh RBx9PDF.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RBx9PDF-ipa
+          path: apps/rbx9-pdf-ios/RBx9PDF.ipa
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: apps/rbx9-pdf-ios/build.log
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/rbx9-pdf-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" RBx9PDF.ipa \
+            --title "RBx9 PDF ${TAG#rbx9-pdf-v}" \
+            --notes "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR."
+          # Releases created with GITHUB_TOKEN don't fire other workflows, so start the source update directly.
+          gh workflow run build-ipa-source.yml --ref main -f release_tag="$TAG"
