@@ -85,3 +85,8 @@
 .in-app .doc-name{display:block;flex:1;max-width:none}
 .in-app .top-actions{flex:1}
 .ghost.done{padding:9px 14px}
+
+/* Apple Pencil: in Pencil-only mode fingers scroll even with a drawing tool. */
+.pencil-only .layer.tool-draw,.pencil-only .layer.tool-highlight,.pencil-only .layer.tool-whiteout,.pencil-only .layer.tool-rect{touch-action:pan-x pan-y pinch-zoom}
+.pencil-chip{border:1px solid var(--line-strong);background:var(--surface)}
+.pencil-chip.on{background:var(--brand-btn);color:#fff;border-color:transparent}

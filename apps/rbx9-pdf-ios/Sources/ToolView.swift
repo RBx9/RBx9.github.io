@@ -91,7 +91,7 @@ struct ToolView: View {
             .ignoresSafeArea()
         }
         .onChange(of: photoItems) { items in loadPhotos(items) }
-        .sheet(isPresented: $showScanner) {
+        .fullScreenCover(isPresented: $showScanner) {
             ScannerView { images in
                 let added = images.enumerated().compactMap { i, image in
                     image.jpegData(compressionQuality: 0.85).map {

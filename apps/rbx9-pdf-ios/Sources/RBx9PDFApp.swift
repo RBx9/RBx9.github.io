@@ -87,6 +87,8 @@ struct HomeView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 24)
+                .frame(maxWidth: 1100) // keeps the grid comfortable on a wide iPad
+                .frame(maxWidth: .infinity)
                 .animation(.spring(response: 0.35, dampingFraction: 0.8), value: order)
                 .animation(.easeInOut(duration: 0.2), value: editing)
             }
@@ -141,6 +143,7 @@ struct HomeView: View {
         } else {
             NavigationLink(value: tool) { card }
                 .buttonStyle(PressableStyle())
+                .hoverEffect(.lift) // trackpad and Apple Pencil hover on iPad
         }
     }
 

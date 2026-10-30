@@ -15,8 +15,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Caveat:wght@600&family=Dancing+Script:wght@600&display=swap">
-<link rel="stylesheet" href="app.css?v=7">
-<link rel="stylesheet" href="edit.css?v=7">
+<link rel="stylesheet" href="app.css?v=8">
+<link rel="stylesheet" href="edit.css?v=8">
 </head>
 <body class="editor">
 <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
@@ -59,6 +59,7 @@
       <button class="icon-btn toggle" id="bold" title="Bold"><b>B</b></button>
       <button class="icon-btn toggle" id="italic" title="Italic"><i>I</i></button>
     </div>
+    <button class="chip pencil-chip" id="pencil-only" title="When on, only Apple Pencil draws and fingers scroll" hidden>✎ Pencil only</button>
     <button class="icon-btn danger" id="delete" title="Delete selected (Del)" hidden></button>
     <span class="hint" id="hint"></span>
     <div class="zoom">
@@ -90,6 +91,6 @@
 </dialog>
 <input type="file" id="image-input" accept="image/*" hidden>
 
-<script type="module" src="edit.js?v=7"></script>
+<script type="module" src="edit.js?v=8"></script>
 </body>
 </html>
