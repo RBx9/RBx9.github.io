@@ -53,8 +53,11 @@ jobs:
           set -euo pipefail
           xcodebuild -version
           cd feather
+          # Avoid an Xcode SwiftPM workspace crash caused by stale pin counts.
+          rm -f Feather.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          rm -f Feather.xcworkspace/xcshareddata/swiftpm/Package.resolved
           xcodebuild \
-            -project Feather.xcodeproj \
+            -workspace Feather.xcworkspace \
             -scheme Feather \
             -configuration Release \
             -destination 'generic/platform=iOS' \
