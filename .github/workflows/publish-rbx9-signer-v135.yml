@@ -1,0 +1,75 @@
+name: Publish RBx9 v1.3.5 Direct IPA Download
+
+on:
+  push:
+    branches:
+      - rbx9-signer-build
+    paths:
+      - .github/workflows/publish-rbx9-signer-v135.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish-ipa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Verify RBx9 v1.3.5 build succeeded
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: RBx9/RBx9.github.io
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 160); do
+            STATE="$(gh run view 41249886992 --repo "$GH_REPO" --json status,conclusion --jq '[.status, .conclusion] | join(" ")')"
+            echo "$STATE"
+            if [ "$STATE" = "completed success" ]; then exit 0; fi
+            if [[ "$STATE" == completed* ]]; then
+              echo "v1.3.5 build was not successful."
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "Build did not finish in time"
+          exit 1
+
+      - name: Download verified IPA artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: RBx9/RBx9.github.io
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/rbx9-direct
+          gh run download 41249886992 \
+            --repo "$GH_REPO" \
+            --name "RBx9-v1.3.5-iOS16plus-unsigned-IPA" \
+            --dir /tmp/rbx9-direct
+          test -s /tmp/rbx9-direct/RBx9-v1.3.5-unsigned.ipa
+          test "$(stat -c%s /tmp/rbx9-direct/RBx9-v1.3.5-unsigned.ipa)" -gt 1000000
+          unzip -t /tmp/rbx9-direct/RBx9-v1.3.5-unsigned.ipa | tail -1
+          unzip -Z1 /tmp/rbx9-direct/RBx9-v1.3.5-unsigned.ipa | grep -qx "Payload/RBx9.app/Info.plist"
+
+      - name: Publish permanent GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: RBx9/RBx9.github.io
+        run: |
+          set -euo pipefail
+          TAG="rbx9-signer-v1.3.5"
+          IPA="/tmp/rbx9-direct/RBx9-v1.3.5-unsigned.ipa"
+          if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$IPA" --clobber --repo "$GH_REPO"
+          else
+            gh release create "$TAG" "$IPA" \
+              --repo "$GH_REPO" \
+              --target "rbx9-signer-build" \
+              --title "RBx9 Signer v1.3.5 (Unsigned IPA)" \
+              --notes "Adds a small Import from Files button below the empty Sign tab. Opens the existing multi-IPA/TIPA Files picker. Keeps original RB9 icon, signing and installation controls. iOS 16+, unsigned; sign in ESign. Feather GPL-3.0 source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
+              --latest=false
+          fi
+
+      - name: Show direct link
+        run: echo "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.5/RBx9-v1.3.5-unsigned.ipa"
