@@ -24,7 +24,7 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 160); do
-            STATE="$(gh run view 41250720587 --repo "$GH_REPO" --json status,conclusion --jq '[.status, .conclusion] | join(" ")')"
+            STATE="$(gh run view 41250900243 --repo "$GH_REPO" --json status,conclusion --jq '[.status, .conclusion] | join(" ")')"
             echo "$STATE"
             if [ "$STATE" = "completed success" ]; then exit 0; fi
             if [[ "$STATE" == completed* ]]; then exit 1; fi
@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/rbx9-direct
-          gh run download 41250720587 \
+          gh run download 41250900243 \
             --repo "$GH_REPO" \
             --name "RBx9-v1.3.6-iOS16plus-unsigned-IPA" \
             --dir /tmp/rbx9-direct
