@@ -145,7 +145,7 @@ change("Views/Settings/Appearance/AppearanceTintColorView.swift",
 tint = app / "Views/Settings/Appearance/AppearanceTintColorView.swift"
 s = tint.read_text()
 begin = s.index('private let _tintOptions: [(name: String, hex: String)] = [')
-end = s.index('\\n\\t]', begin) + len('\\n\\t]')
+end = s.index(chr(10) + chr(9) + ']', begin) + 3
 s = s[:begin] + '''private let _tintOptions: [(name: String, hex: String)] = [
         ("RBx9 Cyan", "#2DE2CF"),
         ("Ice Blue", "#43D9FF"),
