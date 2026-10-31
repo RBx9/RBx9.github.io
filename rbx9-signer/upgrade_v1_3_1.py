@@ -91,7 +91,7 @@ print("Pinned action bar in Tweaks editor")
 # Manage Existing Dylibs gets the same fixed bar, including its OFF states.
 p = app / "Views/Signing/Shared/SigningDylibView.swift"
 s = p.read_text()
-needle = '\t\t.onAppear(perform: _loadDylibs)'
+needle = '        .onAppear(perform: _loadDylibs)'
 if s.count(needle) != 1:
     raise RuntimeError("Could not find existing dylib editor .onAppear")
 s = s.replace(needle, '''        .safeAreaInset(edge: .bottom, spacing: 0) {
