@@ -100,7 +100,7 @@ if s.count(old)!=1:raise RuntimeError("disinject empty-list guard missing")
 s=s.replace(old,new,1)
 old = '''let toRemove = _options.disInjectionFiles.filter { loaded.contains($0) }'''
 new = '''let pathsToRemove = Set(_options.disInjectionFiles + _options.rbx9DeletedDylibPaths)
-        let toRemove = pathsToRemove.filter { loaded.contains($0) }'''
+        let toRemove = Array(pathsToRemove.filter { loaded.contains($0) }).sorted()'''
 if s.count(old)!=1:raise RuntimeError("disinject selection missing")
 s=s.replace(old,new,1)
 p.write_text(s)
