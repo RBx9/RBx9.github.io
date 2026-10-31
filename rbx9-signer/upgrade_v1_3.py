@@ -358,7 +358,7 @@ s=s.replace(needle,'''    .sheet(isPresented: $_showSwipeDylibEditor) {
             }
 			.sheet(isPresented: $_isAltPickerPresenting) { SigningAlternativeIconView''')
 needle='''        .onAppear {
-            if let base = Storage.shared.getAppDirectory(for: app) {'''
+            if !_rbx9DylibStateLoaded, let base = Storage.shared.getAppDirectory(for: app) {'''
 if s.count(needle)!=1:raise RuntimeError("Signing onAppear changed")
 s=s.replace(needle,'''        .onAppear {
             if _openDylibEditorOnLaunch {
@@ -366,7 +366,7 @@ s=s.replace(needle,'''        .onAppear {
                     _showSwipeDylibEditor = true
                 }
             }
-            if let base = Storage.shared.getAppDirectory(for: app) {''')
+            if !_rbx9DylibStateLoaded, let base = Storage.shared.getAppDirectory(for: app) {''')
 p.write_text(s)
 # Add a setting to restore previous imported app items if user wants to re-sign.
 p=app/"Views/Settings/Appearance/AppearanceView.swift"
