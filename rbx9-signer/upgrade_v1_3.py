@@ -157,8 +157,8 @@ enum RBx9DylibArchive {
 # On each Signing screen open, prefill the status of every existing dylib,
 # not global options from a different application. This is non-destructive.
 edit("Feather/Views/Signing/SigningView.swift",
-'''        .onAppear {
-			// ppq protection''',
+'''\t\t.onAppear {
+\t\t\t// ppq protection''',
 '''        .onAppear {
             if let base = Storage.shared.getAppDirectory(for: app) {
                 _temporaryOptions.disInjectionFiles = RBx9DylibArchive.disabled(in: base)
