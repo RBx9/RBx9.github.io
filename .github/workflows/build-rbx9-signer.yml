@@ -67,6 +67,7 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_3.py
           python3 rbx9-signer/upgrade_v1_3_4.py
           python3 rbx9-signer/upgrade_v1_3_5.py
+          python3 rbx9-signer/upgrade_v1_3_6.py
           grep -F 'FEATHER_PRODUCT_BUNDLE_IDENTIFIER=com.rbx9.signer' feather/Feather.xcconfig
           grep -F 'Sign & Install' feather/Feather/Views/Signing/SigningView.swift
           ! grep -Fq 'Dylib Changes Ready' feather/Feather/Views/Signing/Shared/SigningDylibView.swift
@@ -76,6 +77,8 @@ jobs:
           ! grep -Fq '.onTapGesture {' feather/Feather/Views/Library/LibraryCellView.swift
           grep -F 'Delete on Next Sign' feather/Feather/Views/Signing/Shared/SigningDylibView.swift
           grep -F 'Label("Import from Files", systemImage: "folder.badge.plus")' feather/Feather/Views/Library/LibraryView.swift
+          grep -F 'Injecting Tweaks…' feather/Feather/Views/Signing/SigningView.swift
+          grep -F 'Inject & Install' feather/Feather/Views/Signing/RBx9EditorActionBar.swift
           ! grep -Fq 'DisclosureGroup(.localized("Modify"))' feather/Feather/Views/Signing/SigningView.swift
 
       - name: Build unsigned app with Xcode
@@ -119,19 +122,19 @@ jobs:
           test -f "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app/Info.plist"
           (
             cd "$RUNNER_TEMP/rbx9-package"
-            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.3.5-unsigned.ipa" Payload
+            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.3.6-unsigned.ipa" Payload
           )
           # Guard against empty/invalid packages before uploading them.
-          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.3.5-unsigned.ipa" | tail -1
-          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.3.5-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
-          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.3.5-unsigned.ipa")" -gt 1000000
-          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.3.5-unsigned.ipa"
+          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.3.6-unsigned.ipa" | tail -1
+          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.3.6-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
+          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.3.6-unsigned.ipa")" -gt 1000000
+          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.3.6-unsigned.ipa"
 
       - name: Upload actual RBx9 IPA
         uses: actions/upload-artifact@v4
         with:
-          name: RBx9-v1.3.5-iOS16plus-unsigned-IPA
-          path: RBx9-v1.3.5-unsigned.ipa
+          name: RBx9-v1.3.6-iOS16plus-unsigned-IPA
+          path: RBx9-v1.3.6-unsigned.ipa
           if-no-files-found: error
 
       - name: Upload build log if unsuccessful
