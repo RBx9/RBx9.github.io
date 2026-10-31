@@ -49,6 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 rbx9-signer/bootstrap.py
+          python3 rbx9-signer/upgrade_v1_1.py
           grep -F 'FEATHER_PRODUCT_BUNDLE_IDENTIFIER=com.rbx9.signer' feather/Feather.xcconfig
           grep -F 'Re-sign & Reinstall' feather/Feather/Views/Signing/SigningTweaksView.swift
 
@@ -93,19 +94,19 @@ jobs:
           test -f "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app/Info.plist"
           (
             cd "$RUNNER_TEMP/rbx9-package"
-            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa" Payload
+            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.1.0-unsigned.ipa" Payload
           )
           # Guard against empty/invalid packages before uploading them.
-          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa" | tail -1
-          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
-          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa")" -gt 1000000
-          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa"
+          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.1.0-unsigned.ipa" | tail -1
+          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.1.0-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
+          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.1.0-unsigned.ipa")" -gt 1000000
+          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.1.0-unsigned.ipa"
 
       - name: Upload actual RBx9 IPA
         uses: actions/upload-artifact@v4
         with:
-          name: RBx9-iOS16plus-unsigned-IPA
-          path: RBx9-v1.0.0-unsigned.ipa
+          name: RBx9-v1.1.0-iOS16plus-unsigned-IPA
+          path: RBx9-v1.1.0-unsigned.ipa
           if-no-files-found: error
 
       - name: Upload build log if unsuccessful
