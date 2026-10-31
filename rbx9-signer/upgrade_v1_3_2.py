@@ -126,12 +126,10 @@ change("Feather/Views/Signing/SigningView.swift",
 # Staging is instant; the app contents change only when Sign is tapped.
 p = app / "Views/Signing/Shared/SigningDylibView.swift"
 s = p.read_text()
-old = '''SigningToggleCellView(
-                        title: dylib,
-                        options: $options,
-                        arrayKeyPath: \.disInjectionFiles
-                    )'''
-new = '''SigningToggleCellView(
+import re
+# Swift indentation differs between Feather versions; match the row structure.
+pattern = r'SigningToggleCellView\(\s*title: dylib,\s*options: \$options,\s*arrayKeyPath: \\.disInjectionFiles\s*\)'
+replacement = r'''SigningToggleCellView(
                         title: dylib,
                         options: $options,
                         arrayKeyPath: \.disInjectionFiles
@@ -143,8 +141,8 @@ new = '''SigningToggleCellView(
                             Label("Delete", systemImage: "trash")
                         }
                     }'''
-if s.count(old)!=1:raise RuntimeError("Dylib row not found")
-s=s.replace(old,new,1)
+s, replaced = re.subn(pattern, lambda _: replacement, s, count=1)
+if replaced != 1: raise RuntimeError("Dylib row not found")
 old='''        .safeAreaInset(edge: .bottom, spacing: 0) {'''
 if s.count(old)!=1:raise RuntimeError("Existing-dylib action bar missing")
 section = '''            if let pending = options?.rbx9DeletedDylibPaths, !pending.isEmpty {
@@ -168,8 +166,7 @@ section = '''            if let pending = options?.rbx9DeletedDylibPaths, !pendi
             }
 '''
 # Append to the NBList content, before it closes. The nearby .disabled() anchors location.
-old='''            .disabled(options == nil)
-'''
+old='''.disabled(options == nil)\n'''
 if s.count(old)!=1:raise RuntimeError("Existing dylib list block not found")
 s=s.replace(old,old+section,1)
 # Sign bar after new section
