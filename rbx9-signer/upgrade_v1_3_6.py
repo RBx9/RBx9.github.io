@@ -88,8 +88,7 @@ s=s.replace(before,after,1)
 
 # Compact overlay while the signing operation is running. This says "injecting"
 # without hiding the fact the IPA is re-signed prior to installation.
-before='''            .disabled(_isSigning)
-            .animation(.smooth, value: _isSigning)'''
+before='.disabled(_isSigning)'
 after='''            .disabled(_isSigning)
             .overlay {
                 if _isSigning && _rbx9InjectingTweaks {
@@ -115,7 +114,7 @@ after='''            .disabled(_isSigning)
                     .background(Color.black.opacity(0.24))
                 }
             }
-            .animation(.smooth, value: _isSigning)'''
+'''
 if s.count(before)!=1:raise RuntimeError("Signing view animation anchor changed")
 s=s.replace(before,after,1)
 p.write_text(s)
