@@ -183,7 +183,8 @@ change("Feather/Views/Signing/SigningTweaksView.swift",
             }
             .frame(maxWidth: .infinity, alignment: .leading)''')
 change("Feather/Views/Signing/SigningTweaksView.swift",
-       '''private func _fileActions(tweak: URL) -> some View {''',
+       '''@ViewBuilder
+	private func _fileActions(tweak: URL) -> some View {''',
        '''private func _removeTweak(_ tweak: URL) {
         if let index = options.injectionFiles.firstIndex(of: tweak) {
             options.injectionFiles.remove(at: index)
@@ -193,12 +194,6 @@ change("Feather/Views/Signing/SigningTweaksView.swift",
 
     @ViewBuilder
     private func _fileActions(tweak: URL) -> some View {''')
-change("Feather/Views/Signing/SigningTweaksView.swift",
-       '''if let index = options.injectionFiles.firstIndex(of: tweak) {
-                options.injectionFiles.remove(at: index)
-                _showRBx9ApplyConfirmation = true
-            }''',
-       '''_removeTweak(tweak)''')
 # Rebrand Settings and configure the user's own Telegram feedback channel.
 change("Feather/Views/Settings/SettingsView.swift",
        '''private let _donationsUrl = "https://github.com/sponsors/claration"
