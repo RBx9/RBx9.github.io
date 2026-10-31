@@ -160,8 +160,9 @@ edit("Feather/Views/Signing/SigningView.swift",
 '''\t\t.onAppear {
 \t\t\t// ppq protection''',
 '''        .onAppear {
-            if let base = Storage.shared.getAppDirectory(for: app) {
+            if !_rbx9DylibStateLoaded, let base = Storage.shared.getAppDirectory(for: app) {
                 _temporaryOptions.disInjectionFiles = RBx9DylibArchive.disabled(in: base)
+                _rbx9DylibStateLoaded = true
             }
 			// ppq protection''')
 # An already-disabled path has no Mach-O load command, so only send currently
@@ -178,19 +179,9 @@ p=app/"Views/Signing/Shared/SigningDylibView.swift"
 s=p.read_text()
 a=s.index('\t\tlet bundle = Bundle(url: path)',s.index('private func _loadDylibs()'))
 b=s.index('\n\t}',a)
-s=s[:a]+'''        let current = RBx9DylibArchive.loaded(in: path)
-        let all = RBx9DylibArchive.paths(in: path)
-        _dylibs = all
+s=s[:a]+'''        // Preserve user's unsaved toggles when re-entering the editor.
+        _dylibs = RBx9DylibArchive.paths(in: path)
         _hiddenDylibCount = 0
-        if var currentOptions = options {
-            // Old disabled references remain visible after signing; the binary
-            // alone no longer contains them, so recover their OFF state.
-            let switchedOff = Set(RBx9DylibArchive.disabled(in: path))
-            let existingChanges = Set(currentOptions.disInjectionFiles)
-            currentOptions.disInjectionFiles = Array(switchedOff.union(existingChanges)).sorted()
-            options = currentOptions
-        }
-        _ = current
 '''+s[b:]
 p.write_text(s)
 edit("Feather/Utilities/Handlers/SigningHandler.swift",
@@ -338,6 +329,7 @@ needle='''@State private var _isSigning = false'''
 if s.count(needle)!=1:raise RuntimeError("SigningView state changed")
 s=s.replace(needle,needle+'''
     @State private var _showSwipeDylibEditor = false
+    @State private var _rbx9DylibStateLoaded = false
     private let _openDylibEditorOnLaunch: Bool''')
 needle='''init(app: AppInfoPresentable) {
 		self.app = app'''
