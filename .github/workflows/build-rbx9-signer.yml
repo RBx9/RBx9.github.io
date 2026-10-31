@@ -44,12 +44,21 @@ jobs:
           sips -z 1024 1024 rbx9-source-icon.png
           sips -g pixelWidth -g pixelHeight rbx9-source-icon.png
 
+      - name: Generate six optional RBx9 icon designs
+        shell: bash
+        run: |
+          set -euo pipefail
+          swift rbx9-signer/make_alternates.swift rbx9-source-icon.png rbx9-alt-icons
+          test "$(find rbx9-alt-icons -type f -name '*.png' | wc -l | tr -d ' ')" = 12
+          # Original primary icon is left untouched.
+
       - name: Apply RBx9 customizations
         shell: bash
         run: |
           set -euo pipefail
           python3 rbx9-signer/bootstrap.py
           python3 rbx9-signer/upgrade_v1_1.py
+          python3 rbx9-signer/upgrade_icons_appearance.py
           grep -F 'FEATHER_PRODUCT_BUNDLE_IDENTIFIER=com.rbx9.signer' feather/Feather.xcconfig
           grep -F 'Re-sign & Reinstall' feather/Feather/Views/Signing/SigningTweaksView.swift
 
