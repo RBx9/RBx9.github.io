@@ -289,4 +289,17 @@ struct AboutView: View {
     }
 }
 ''')
+# Default to Server installation using Semi-Local server mode.
+# @AppStorage respects an existing user preference; these defaults only apply
+# when no setting has ever been saved.
+change("Feather/FeatherApp.swift",
+       '"rbx9.keepOriginalIPAs": true',
+       '"rbx9.keepOriginalIPAs": true,\n            "Feather.serverMethod": 1,\n            "Feather.installationMethod": 0')
+change("Feather/Views/Settings/Installation/Server & SSL/ServerView.swift",
+       '@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 0',
+       '@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 1')
+change("Feather/Views/Library/Install/InstallPreviewView.swift",
+       '@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 0',
+       '@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 1')
+
 print("RBx9 1.1 changes applied")
