@@ -68,18 +68,14 @@ change("Feather/Views/Library/LibraryCellView.swift",
 # After standard signing, ask to install with one tap. The explicit
 # "Sign Only" tweak action does not ask; "Re-sign & Reinstall" still auto-launches.
 change("Feather/Views/Signing/SigningView.swift",
-       '''if _temporaryOptions.post_installAppAfterSigned {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                        NotificationCenter.default.post(name: Notification.Name("Feather.installApp"), object: nil)
-                    }
-                }
-                dismiss()'''.replace("                    ","\t\t\t\t\t").replace("                }","\t\t\t\t}").replace("                dismiss()","\t\t\t\tdismiss()"),
-       '''if _temporaryOptions.post_installAppAfterSigned {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                        NotificationCenter.default.post(name: Notification.Name("Feather.installApp"), object: nil)
-                    }
-                } else if installAfterSigning == nil {
-                    // Standard sign flow: prompt after success, without auto-install.
+       '''
+				dismiss()
+			}
+		}
+	}
+}''',
+       '''
+                if !_temporaryOptions.post_installAppAfterSigned && installAfterSigning == nil {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
                         let install = UIAlertAction(title: "Install Now", style: .default) { _ in
                             NotificationCenter.default.post(
@@ -94,7 +90,11 @@ change("Feather/Views/Signing/SigningView.swift",
                         )
                     }
                 }
-                dismiss()''')
+				dismiss()
+			}
+		}
+	}
+}''')
 # Old post-install defaults could skip the requested prompt; standard signing
 # now prefers the confirmation even when users had previously selected auto-install.
 change("Feather/Views/Signing/SigningView.swift",
