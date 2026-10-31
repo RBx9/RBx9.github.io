@@ -221,8 +221,8 @@ old='''_selectedScope == .all || _selectedScope == .signed'''
 new='''(_rbx9LibraryLayout == 1
                         ? _rbx9LibraryTab == 1
                         : (_selectedScope == .all || _selectedScope == .signed))'''
-if s.count(old)!=1:raise RuntimeError("Signed section condition mismatch")
-s=s.replace(old,new)
+if s.count(old)!=2:raise RuntimeError("Signed search and section conditions mismatch")
+s=s.replace(old,new,1)
 old='''_selectedScope == .all || _selectedScope == .imported'''
 new='''(_rbx9LibraryLayout == 1
                         ? _rbx9LibraryTab == 0
