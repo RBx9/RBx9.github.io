@@ -87,11 +87,18 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$APP/Info.plist"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist"
           mkdir -p "$RUNNER_TEMP/rbx9-package/Payload"
-          cp -R "$APP" "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app"
+          # Xcode outputs a symlink in Build/Products when DEPLOYMENT_LOCATION=YES.
+          # Dereference it; otherwise IPA contains only a symbolic link (a few hundred bytes).
+          cp -RL "$APP" "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app"
+          test -f "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app/Info.plist"
           (
             cd "$RUNNER_TEMP/rbx9-package"
-            /usr/bin/zip -qyr "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa" Payload
+            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa" Payload
           )
+          # Guard against empty/invalid packages before uploading them.
+          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa" | tail -1
+          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
+          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa")" -gt 1000000
           ls -lh "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa"
 
       - name: Upload actual RBx9 IPA
