@@ -42,6 +42,10 @@ update("Feather/Views/Sources/Apps/SourceAppsView.swift",
        """        .onReceive(viewModel.$sources.receive(on: DispatchQueue.main)) { _ in
             _load()
         }""")
+update("Feather/Views/Sources/Apps/SourceAppsView.swift",
+       "import SwiftUI",
+       "import SwiftUI\nimport Combine")
+
 # Protect against double taps that initiate two concurrent signing operations.
 update("Feather/Views/Signing/SigningView.swift",
        """private func _start(installAfterSigning: Bool? = nil) {
