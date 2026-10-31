@@ -206,11 +206,8 @@ change("Feather/Views/Settings/SettingsView.swift",
                 #endif'''.replace("                    ","\t\t\t\t\t").replace("                #endif","\t\t\t\t#endif"),
        '''// No donation controls in RBx9.''')
 change("Feather/Views/Settings/SettingsView.swift",
-       '''_feedback()
-
-                Section {'''.replace("                ","\t\t\t\t"),
-       '''_feedback()
-
+       '''				_feedback()''',
+       '''                _feedback()
                 Section {
                     TextField("https://t.me/yourchannel", text: $_telegramChannelURL)
                         .textContentType(.URL)
@@ -221,9 +218,7 @@ change("Feather/Views/Settings/SettingsView.swift",
                     Text("Telegram Feedback Channel")
                 } footer: {
                     Text("Enter your Telegram channel URL once. Submit Feedback will open this channel.")
-                }
-
-                Section {''')
+                }''')
 change("Feather/Views/Settings/SettingsView.swift",
        '''UIApplication.open(URL(string: "\(_githubUrl)/issues/new/choose")!)''',
        '''if let url = URL(string: _telegramChannelURL.trimmingCharacters(in: .whitespacesAndNewlines)),
