@@ -8,12 +8,14 @@ root = Path("feather")
 p = root/"Feather/Views/Signing/SigningView.swift"
 s = p.read_text()
 
-old = '''\t\tNBSection(.localized("Advanced")) {
-\t\t\tDisclosureGroup(.localized("Modify")) {'''
-if s.count(old) != 1:
+anchor = 'NBSection(.localized("Advanced")) {'
+if s.count(anchor) != 1:
+    raise RuntimeError("Could not find the Advanced section")
+a = s.rfind('\\n', 0, s.index(anchor)) + 1
+if 'DisclosureGroup(.localized("Modify")) {' not in s[a:a+150]:
     raise RuntimeError("Could not find Advanced/Modify group")
-a = s.index(old)
-b = s.index('\n\t\t\tNavigationLink(.localized("Properties")) {', a)
+properties = 'NavigationLink(.localized("Properties")) {'
+b = s.rfind('\\n', 0, s.index(properties, a)) + 1
 new = '''        NBSection("Advanced Tools") {
             NavigationLink {
                 SigningFrameworksView(
