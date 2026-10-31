@@ -34,9 +34,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f assets/rbx9-logo.jpg
-          sips -s format png assets/rbx9-logo.jpg --out rbx9-source-icon.png
-          sips -Z 1024 rbx9-source-icon.png
+          test -f rbx9-signer/icon-base64.txt
+          base64 -D -i rbx9-signer/icon-base64.txt -o rbx9-source-icon.jpg
+          sips -s format png rbx9-source-icon.jpg --out rbx9-source-icon.png
+          sips -z 1024 1024 rbx9-source-icon.png
           sips -g pixelWidth -g pixelHeight rbx9-source-icon.png
 
       - name: Apply RBx9 customizations
