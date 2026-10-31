@@ -11,11 +11,11 @@ s = p.read_text()
 anchor = 'NBSection(.localized("Advanced")) {'
 if s.count(anchor) != 1:
     raise RuntimeError("Could not find the Advanced section")
-a = s.rfind('\\n', 0, s.index(anchor)) + 1
+a = s.rfind('\n', 0, s.index(anchor)) + 1
 if 'DisclosureGroup(.localized("Modify")) {' not in s[a:a+150]:
     raise RuntimeError("Could not find Advanced/Modify group")
 properties = 'NavigationLink(.localized("Properties")) {'
-b = s.rfind('\\n', 0, s.index(properties, a)) + 1
+b = s.rfind('\n', 0, s.index(properties, a)) + 1
 new = '''        NBSection("Advanced Tools") {
             NavigationLink {
                 SigningFrameworksView(
