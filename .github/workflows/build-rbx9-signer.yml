@@ -1,0 +1,102 @@
+name: RBx9 Signer iOS 16+ Build
+
+on:
+  push:
+    branches: [rbx9-signer-build]
+    paths:
+      - 'rbx9-signer/**'
+      - '.github/workflows/build-rbx9-signer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-rbx9:
+    runs-on: macos-15
+    timeout-minutes: 50
+    steps:
+      - name: Checkout isolated RBx9 build branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Fetch Feather GPL-3.0 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --recurse-submodules --shallow-submodules \
+            https://github.com/claration/feather.git feather
+          test -f feather/LICENSE
+          test -f feather/Feather.xcodeproj/project.pbxproj
+
+      - name: Prepare selected RBx9 icon
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f assets/rbx9-logo.jpg
+          sips -s format png assets/rbx9-logo.jpg --out rbx9-source-icon.png
+          sips -Z 1024 rbx9-source-icon.png
+          sips -g pixelWidth -g pixelHeight rbx9-source-icon.png
+
+      - name: Apply RBx9 customizations
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 rbx9-signer/bootstrap.py
+          grep -F 'FEATHER_PRODUCT_BUNDLE_IDENTIFIER=com.rbx9.signer' feather/Feather.xcconfig
+          grep -F 'Re-sign & Reinstall' feather/Feather/Views/Signing/SigningTweaksView.swift
+
+      - name: Build unsigned app with Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          cd feather
+          xcodebuild \
+            -project Feather.xcodeproj \
+            -scheme Feather \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/rbx9-build" \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES=NO \
+            build > "$RUNNER_TEMP/rbx9-build.log" 2>&1 || {
+              grep -E 'error:|fatal error:|BUILD FAILED' "$RUNNER_TEMP/rbx9-build.log" | tail -100 || true
+              tail -80 "$RUNNER_TEMP/rbx9-build.log"
+              exit 1
+            }
+          tail -15 "$RUNNER_TEMP/rbx9-build.log"
+
+      - name: Package IPA for ESign/Feather signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/rbx9-build/Build/Products/Release-iphoneos/Feather.app"
+          test -d "$APP"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist"
+          mkdir -p "$RUNNER_TEMP/rbx9-package/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app"
+          (
+            cd "$RUNNER_TEMP/rbx9-package"
+            /usr/bin/zip -qyr "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa" Payload
+          )
+          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.0.0-unsigned.ipa"
+
+      - name: Upload actual RBx9 IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: RBx9-iOS16plus-unsigned-IPA
+          path: RBx9-v1.0.0-unsigned.ipa
+          if-no-files-found: error
+
+      - name: Upload build log if unsuccessful
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RBx9-build-log
+          path: ${{ runner.temp }}/rbx9-build.log
+          if-no-files-found: ignore
