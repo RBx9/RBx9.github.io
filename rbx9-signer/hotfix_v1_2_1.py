@@ -43,8 +43,8 @@ update("Feather/Views/Sources/Apps/SourceAppsView.swift",
             _load()
         }""")
 update("Feather/Views/Sources/Apps/SourceAppsView.swift",
-       "import SwiftUI",
-       "import SwiftUI\nimport Combine")
+       "import SwiftUI\nimport AltSourceKit",
+       "import SwiftUI\nimport Combine\nimport AltSourceKit")
 
 # Protect against double taps that initiate two concurrent signing operations.
 update("Feather/Views/Signing/SigningView.swift",
