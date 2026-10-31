@@ -51,10 +51,10 @@ change("Feather/Views/Library/LibraryCellView.swift",
             }''')
 change("Feather/Views/Library/LibraryCellView.swift",
        '''if isEditing {
-                _toggleSelection()
-            }
-        }
-        .swipeActions'''.replace("                ","\t\t\t\t").replace("            }","\t\t\t}").replace("        }","\t\t}"),
+				_toggleSelection()
+			}
+		}
+		.swipeActions''',
        '''if isEditing {
                 _toggleSelection()
             } else if app.isSigned {
