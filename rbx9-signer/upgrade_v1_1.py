@@ -199,7 +199,7 @@ change("Feather/Views/Settings/SettingsView.swift",
        '''private let _donationsUrl = "https://github.com/sponsors/claration"
     private let _githubUrl = "https://github.com/claration/Feather"'''.replace("    ","\t"),
        '''private let _githubUrl = "https://github.com/RBx9"
-    @AppStorage("rbx9.telegramChannelURL") private var _telegramChannelURL = ""''')
+    @AppStorage("rbx9.telegramChannelURL") private var _telegramChannelURL = "https://t.me/RBx9_Repo"''')
 change("Feather/Views/Settings/SettingsView.swift",
        '''#if !NIGHTLY && !DEBUG
                     SettingsDonationCellView(site: _donationsUrl)
@@ -209,7 +209,7 @@ change("Feather/Views/Settings/SettingsView.swift",
        '''				_feedback()''',
        '''                _feedback()
                 Section {
-                    TextField("https://t.me/yourchannel", text: $_telegramChannelURL)
+                    TextField("https://t.me/RBx9_Repo", text: $_telegramChannelURL)
                         .textContentType(.URL)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
