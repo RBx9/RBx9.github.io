@@ -1,0 +1,58 @@
+name: Publish RBx9 v1.3.4 Direct IPA Download
+
+on:
+  push:
+    branches:
+      - rbx9-signer-build
+    paths:
+      - .github/workflows/publish-rbx9-signer-v134.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish-ipa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download verified IPA from successful RBx9 v1.3.4 build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: RBx9/RBx9.github.io
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/rbx9-direct
+          gh run download 41247383881 \
+            --repo "$GH_REPO" \
+            --name "RBx9-v1.3.4-iOS16plus-unsigned-IPA" \
+            --dir /tmp/rbx9-direct
+          test -s /tmp/rbx9-direct/RBx9-v1.3.4-unsigned.ipa
+          test "$(stat -c%s /tmp/rbx9-direct/RBx9-v1.3.4-unsigned.ipa)" -gt 1000000
+          unzip -t /tmp/rbx9-direct/RBx9-v1.3.4-unsigned.ipa | tail -1
+          unzip -Z1 /tmp/rbx9-direct/RBx9-v1.3.4-unsigned.ipa | grep -qx "Payload/RBx9.app/Info.plist"
+          sha256sum /tmp/rbx9-direct/RBx9-v1.3.4-unsigned.ipa
+
+      - name: Publish permanent public GitHub Release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: RBx9/RBx9.github.io
+        run: |
+          set -euo pipefail
+          TAG="rbx9-signer-v1.3.4"
+          IPA="/tmp/rbx9-direct/RBx9-v1.3.4-unsigned.ipa"
+          if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$IPA" --clobber --repo "$GH_REPO"
+          else
+            gh release create "$TAG" "$IPA" \
+              --repo "$GH_REPO" \
+              --target "rbx9-signer-build" \
+              --title "RBx9 Signer v1.3.4 (Unsigned IPA)" \
+              --notes "RBx9 IPA signing app built from Feather under GPL-3.0. iOS 16+. This download is an unsigned IPA: sign it using your own ESign certificate before installing. Source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
+              --latest=false
+          fi
+
+      - name: Print permanent direct download URL
+        run: |
+          echo "Download: https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.4/RBx9-v1.3.4-unsigned.ipa"
