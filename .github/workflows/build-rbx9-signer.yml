@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: rbx9-signer-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-rbx9:
     runs-on: macos-26
