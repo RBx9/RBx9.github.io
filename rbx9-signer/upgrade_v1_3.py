@@ -317,8 +317,7 @@ needle='''@Binding var selectedSigningAppPresenting: AnyApp?'''
 if s.count(needle)!=1:raise RuntimeError("Missing signed app binding")
 s=s.replace(needle,needle+'''
     @Binding var selectedDylibAppPresenting: AnyApp?''')
-needle='''		.swipeActions {
-			if !isEditing {'''
+needle='.swipeActions {'
 if s.count(needle)!=1:raise RuntimeError("Missing swipe action")
 s=s.replace(needle,'''        .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if !isEditing {
@@ -330,8 +329,7 @@ s=s.replace(needle,'''        .swipeActions(edge: .leading, allowsFullSwipe: tru
                 .tint(Color(red: 0.16, green: 0.75, blue: 0.83))
             }
         }
-		.swipeActions {
-			if !isEditing {''')
+.swipeActions {''')
 p.write_text(s)
 # Open existing-dylibs editor directly when launched from leading swipe.
 p=app/"Views/Signing/SigningView.swift"
