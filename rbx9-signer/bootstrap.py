@@ -49,7 +49,8 @@ p=composer/"icon.json"; d=json.loads(p.read_text())
 d["fill"]={"linear-gradient":["srgb:0.025,0.060,0.125,1.000","srgb:0.016,0.18,0.26,1.000"],"orientation":{"start":{"x":0.0,"y":0.0},"stop":{"x":1.0,"y":1.0}}}
 d["groups"]=[{"layers":[{"image-name":"rbx9.png","name":"RBx9"}],"shadow":{"kind":"neutral","opacity":0.1},"translucency":{"enabled":False}}]
 p.write_text(json.dumps(d,indent=2)+"\n")
-shutil.copy2("rbx9-source-icon.png",composer/"Assets/rbx9.png")
+# Icon Composer data may crash actool during asset catalog build; rely on .xcassets instead.
+shutil.rmtree(composer)
 # Preserve the original Feather core-data model and actual signing/installation engine.
 replace("Feather/Views/Settings/SettingsView.swift",'@State private var _currentIcon: String? = UIApplication.shared.alternateIconName','''@State private var _currentIcon: String? = UIApplication.shared.alternateIconName
     @AppStorage("rbx9.autoCleanupPreviousVersions") private var _autoCleanupPrevious = true
@@ -199,7 +200,7 @@ struct RBx9HeroCard: View {
                 Spacer()
                 Text("iOS 16+").font(.caption2.weight(.semibold))
             }.font(.caption.weight(.bold)).foregroundStyle(cyan)
-            Text("Your apps.\nYour control.")
+            Text("Your apps.\\nYour control.")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .lineSpacing(2).foregroundStyle(.white)
             Text("Import, personalize, inject tweaks and sign in fewer steps.")
