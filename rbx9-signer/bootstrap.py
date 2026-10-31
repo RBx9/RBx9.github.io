@@ -228,4 +228,17 @@ struct RBx9HeroCard: View {
     }
 }
 """)
+# Keep optional apply callback after required stored properties for Swift memberwise initializers.
+for relative, binding in [
+    ("Feather/Views/Signing/SigningTweaksView.swift", "\t@Binding var options: Options"),
+    ("Feather/Views/Signing/Shared/SigningDylibView.swift", "\t@Binding var options: Options?")
+]:
+    p = root / relative
+    src = p.read_text()
+    callback = "    var onApply: (Bool) -> Void = { _ in }"
+    if src.count(callback) != 1 or src.count(binding) != 1:
+        raise RuntimeError("RBx9 initializer anchor mismatch: " + relative)
+    src = src.replace(callback, "", 1)
+    src = src.replace(binding, binding + "\n" + callback, 1)
+    p.write_text(src)
 print("RBx9 source customization complete")
