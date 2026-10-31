@@ -164,6 +164,15 @@ edit("Feather/Views/Signing/SigningView.swift",
                 _temporaryOptions.disInjectionFiles = RBx9DylibArchive.disabled(in: base)
             }
 			// ppq protection''')
+# An already-disabled path has no Mach-O load command, so only send currently
+# loaded paths to the Zsign removal function. Do not error on archived entries.
+edit("Feather/Utilities/Handlers/ZsignHandler.swift",
+     '''if !Zsign.removeDylibs(appExecutable: execPath, using: _options.disInjectionFiles) {''',
+     '''let loaded = Set(Zsign.listDylibs(appExecutable: execPath).map { $0 as String })
+        let toRemove = _options.disInjectionFiles.filter { loaded.contains($0) }
+        guard !toRemove.isEmpty else { return }
+        if !Zsign.removeDylibs(appExecutable: execPath, using: toRemove) {''')
+
 # On the editor screen, show current AND previously disabled dylibs.
 p=app/"Views/Signing/Shared/SigningDylibView.swift"
 s=p.read_text()
