@@ -117,14 +117,21 @@ enum RBx9DylibArchive {
         }
     }
 
-    static func applyAndStore(in app: URL, disabledPaths: [String]) throws {
+    static func applyAndStore(
+        in app: URL,
+        disabledPaths: [String],
+        previouslyLoaded: Set<String>
+    ) throws {
         guard let executable = executable(for: app) else { return }
-        let original = loaded(in: app)
         let prior = inventory(for: app)
         let requestedOff = Set(disabledPaths.filter(editablePath))
-        let allKnown = Set(prior.knownPaths)
-            .union(paths(in: app))
-            .union(requestedOff)
+        let originalNames = previouslyLoaded.union(prior.knownPaths).union(requestedOff)
+        let allKnown = originalNames.union(paths(in: app).filter { path in
+            // A previous @rpath/Foo.dylib must not be rediscovered as a
+            // separate @executable_path/Frameworks/Foo.dylib.
+            let isFrameworkRoot = path.hasPrefix("@executable_path/Frameworks/")
+            return !isFrameworkRoot || !originalNames.contains("@rpath/" + (path as NSString).lastPathComponent)
+        })
         // ZsignHandler already removes load commands in requestedOff.
         // Restore previously disabled load commands when they are switched ON.
         for path in allKnown.sorted() where !requestedOff.contains(path) {
@@ -144,7 +151,6 @@ enum RBx9DylibArchive {
         )
         let data = try PropertyListEncoder().encode(state)
         try data.write(to: inventoryURL(for: app), options: .atomic)
-        _ = original // ensures initial inventory includes original loaded paths
     }
 }
 ''')
@@ -182,10 +188,12 @@ edit("Feather/Utilities/Handlers/SigningHandler.swift",
 '''try await handler.disinject()
 		
 		if''',
-'''try await handler.disinject()
+'''let originalPaths = RBx9DylibArchive.loaded(in: movedAppPath)
+        try await handler.disinject()
         try RBx9DylibArchive.applyAndStore(
             in: movedAppPath,
-            disabledPaths: _options.disInjectionFiles
+            disabledPaths: _options.disInjectionFiles,
+            previouslyLoaded: originalPaths
         )
 		
 		if''')
