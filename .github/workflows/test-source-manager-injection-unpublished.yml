@@ -43,14 +43,14 @@ jobs:
           test -s "$app/RBx9SourceManager"
           mkdir -p "$RUNNER_TEMP/package/Payload"
           cp -R "$app" "$RUNNER_TEMP/package/Payload/"
-          ( cd "$RUNNER_TEMP/package" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9SourceManager-v1.2.0-DEV-unsigned.ipa" Payload )
-          unzip -tq "$GITHUB_WORKSPACE/RBx9SourceManager-v1.2.0-DEV-unsigned.ipa"
-          test -s "$GITHUB_WORKSPACE/RBx9SourceManager-v1.2.0-DEV-unsigned.ipa"
+          ( cd "$RUNNER_TEMP/package" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9SourceManager-v1.3.0-DEV-unsigned.ipa" Payload )
+          unzip -tq "$GITHUB_WORKSPACE/RBx9SourceManager-v1.3.0-DEV-unsigned.ipa"
+          test -s "$GITHUB_WORKSPACE/RBx9SourceManager-v1.3.0-DEV-unsigned.ipa"
       - name: Keep IPA as workflow artifact only (no GitHub Release)
         uses: actions/upload-artifact@v4
         with:
-          name: RBx9SourceManager-v1.2.0-DEV-unsigned
-          path: RBx9SourceManager-v1.2.0-DEV-unsigned.ipa
+          name: RBx9SourceManager-v1.3.0-DEV-unsigned
+          path: RBx9SourceManager-v1.3.0-DEV-unsigned.ipa
           if-no-files-found: error
           retention-days: 7
   integration-test:
