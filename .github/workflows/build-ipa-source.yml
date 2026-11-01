@@ -114,6 +114,14 @@ jobs:
             exit 0
           fi
           git commit -m 'Update Feather and ESign IPA catalogs'
+          # sync-icons / upstream metadata can dirty non-catalog files.
+          # Keep the catalog commit and discard only runner-local leftovers
+          # from the push/rebase worktree; never commit them accidentally.
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "Saving unstaged generator changes before rebase:"
+            git status --short
+            git stash push --include-untracked -m 'runner-only source generator leftovers'
+          fi
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git rebase origin/main
