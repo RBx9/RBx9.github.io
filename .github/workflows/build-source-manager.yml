@@ -1,0 +1,60 @@
+name: Build RBx9 Source Manager IPA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'source-manager/**'
+      - '.github/workflows/build-source-manager.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rbx9-source-manager-ipa
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: |
+          cd source-manager
+          xcodegen generate
+      - name: Build unsigned iPhone/iPad application
+        run: |
+          set -euo pipefail
+          xcodebuild -project source-manager/RBx9SourceManager.xcodeproj \
+            -scheme RBx9SourceManager -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/SourceManagerBuild" \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/SourceManagerBuild/Build/Products/Release-iphoneos/RBx9SourceManager.app"
+          test -f "$app/RBx9SourceManager"
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$app" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9SourceManager-v1.0.0-unsigned.ipa" Payload
+          test -s "$GITHUB_WORKSPACE/RBx9SourceManager-v1.0.0-unsigned.ipa"
+      - name: Publish unsigned IPA in GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="rbx9-source-manager-v1.0.0"
+          asset="RBx9SourceManager-v1.0.0-unsigned.ipa"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$asset" --clobber
+          else
+            gh release create "$tag" "$asset" --target "$GITHUB_SHA" \
+              --title "RBx9 Source Manager v1.0.0 (Unsigned IPA)" \
+              --notes "ESign, Sileo and Settings tabs. GitHub account authorization, IPA/DEB uploads, source listing management, and independent source icon and metadata editing. Sign the IPA with your own certificate."
+          fi
