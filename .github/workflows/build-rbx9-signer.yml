@@ -71,18 +71,22 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_7.py
           python3 rbx9-signer/upgrade_v1_3_8.py
           python3 rbx9-signer/upgrade_v1_3_9.py
-          python3 rbx9-signer/upgrade_v1_3_10.py
+          # The prior release removed RBx9's splash instead of Feather's launch glyph.
+          # Keep RBx9 1.3.7/1.3.8 overlay and only replace iOS launch storyboard.
+          python3 rbx9-signer/upgrade_v1_3_11.py
           grep -F 'func rename(_ item: RBx9StoredTweak' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'RBx9StoredTweakExportButton' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'ShareLink(item:' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'Button("Save")' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'RBx9DylibStorage' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'Developing and Modification' feather/Feather/Views/Settings/About/AboutView.swift
-          ! grep -Fq 'rbx9ShowingStartup' feather/Feather/FeatherApp.swift
-          ! grep -Fq '230_000_000' feather/Feather/FeatherApp.swift
-          ! grep -Fq 'RBx9TransmissionStartup' feather/Feather/FeatherApp.swift
+          grep -F 'rbx9ShowingStartup' feather/Feather/FeatherApp.swift
+          grep -F '230_000_000' feather/Feather/FeatherApp.swift
+          grep -F 'RBx9TransmissionStartup()' feather/Feather/FeatherApp.swift
+          ! grep -Fq 'image="Glyph"' "feather/Feather/Resources/Launch Screen.storyboard"
+          grep -F 'red="0.022" green="0.045" blue="0.085"' "feather/Feather/Resources/Launch Screen.storyboard"
           grep -F 'com.rbx9.signer.ipa' feather/Feather/Resources/Info.plist
-          test ! -e feather/Feather/Resources/Assets.xcassets/RBx9LaunchIcon.imageset
+          test -f feather/Feather/Resources/Assets.xcassets/RBx9LaunchIcon.imageset/rbx9-launch.png
           grep -F 'FEATHER_PRODUCT_BUNDLE_IDENTIFIER=com.rbx9.signer' feather/Feather.xcconfig
           grep -F 'Sign & Install' feather/Feather/Views/Signing/SigningView.swift
           ! grep -Fq 'Dylib Changes Ready' feather/Feather/Views/Signing/Shared/SigningDylibView.swift
@@ -137,30 +141,30 @@ jobs:
           test -f "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app/Info.plist"
           (
             cd "$RUNNER_TEMP/rbx9-package"
-            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.3.10-unsigned.ipa" Payload
+            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.3.11-unsigned.ipa" Payload
           )
           # Guard against empty/invalid packages before uploading them.
-          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.3.10-unsigned.ipa" | tail -1
-          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.3.10-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
-          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.3.10-unsigned.ipa")" -gt 1000000
-          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.3.10-unsigned.ipa"
+          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.3.11-unsigned.ipa" | tail -1
+          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.3.11-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
+          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.3.11-unsigned.ipa")" -gt 1000000
+          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.3.11-unsigned.ipa"
 
       - name: Upload actual RBx9 IPA
         uses: actions/upload-artifact@v4
         with:
-          name: RBx9-v1.3.10-iOS16plus-unsigned-IPA
-          path: RBx9-v1.3.10-unsigned.ipa
+          name: RBx9-v1.3.11-iOS16plus-unsigned-IPA
+          path: RBx9-v1.3.11-unsigned.ipa
           if-no-files-found: error
 
-      - name: Publish verified v1.3.10 unsigned IPA
+      - name: Publish verified v1.3.11 unsigned IPA
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
-          TAG="rbx9-signer-v1.3.10"
-          IPA="$GITHUB_WORKSPACE/RBx9-v1.3.10-unsigned.ipa"
+          TAG="rbx9-signer-v1.3.11"
+          IPA="$GITHUB_WORKSPACE/RBx9-v1.3.11-unsigned.ipa"
           test -f "$IPA"
           unzip -t "$IPA" | tail -1
           if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
@@ -168,8 +172,8 @@ jobs:
           else
             gh release create "$TAG" "$IPA" --repo "$GH_REPO" \
               --target "$GITHUB_SHA" \
-              --title "RBx9 Signer v1.3.10 (Unsigned IPA)" \
-              --notes "Removed the old transmission splash and artificial startup delay. The app displays its main scene as soon as iOS launches it. Keeps v1.3.9 Dylib Storage rename, import/export, and duplicate protection. Existing injection and signing remain supported. Existing signing and reinstall workflows remain in place. Unsigned IPA for iOS 16+; sign with your own certificate. Based on Feather GPL-3.0; source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
+              --title "RBx9 Signer v1.3.11 (Unsigned IPA)" \
+              --notes "Fixed Feather's system launch storyboard by removing its old Glyph. Restores the short cyan RBx9 transmission startup. Keeps all signing and Dylib Storage features. Existing injection and signing remain supported. Existing signing and reinstall workflows remain in place. Unsigned IPA for iOS 16+; sign with your own certificate. Based on Feather GPL-3.0; source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
               --latest=false
           fi
 
@@ -179,12 +183,12 @@ jobs:
           ref: main
           path: source-main
 
-      - name: Add validated v1.3.10 to ESign and Feather feeds
+      - name: Add validated v1.3.11 to ESign and Feather feeds
         shell: bash
         run: |
           set -euo pipefail
           cd source-main
-          printf '%s\n' 'RBx9 v1.3.10: removes old animated transmission startup and artificial launch delay; retains Dylib Storage and import/export.' > ../rbx9-release-notes.txt
+          printf '%s\n' 'RBx9 v1.3.11: removes Feather's old system startup Glyph and restores the fast RBx9 transmission animation; retains Dylib Storage and import/export.' > ../rbx9-release-notes.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           # Start over from fresh main on every retry; rebasing generated files
@@ -193,8 +197,8 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             python3 ipa-source/scripts/repo_manager.py add \
-              --ipa ../RBx9-v1.3.10-unsigned.ipa \
-              --url "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.10/RBx9-v1.3.10-unsigned.ipa" \
+              --ipa ../RBx9-v1.3.11-unsigned.ipa \
+              --url "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.11/RBx9-v1.3.11-unsigned.ipa" \
               --date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
               --notes-file ../rbx9-release-notes.txt
             git add ipa-source/catalog.json ipa-source/source.json ipa-source/esign.json ipa/index.html esign/index.html
@@ -202,7 +206,7 @@ jobs:
               echo "Version already current in IPA catalogs"
               exit 0
             fi
-            git commit -m "Publish RBx9 Signer v1.3.10 to IPA catalogs"
+            git commit -m "Publish RBx9 Signer v1.3.11 to IPA catalogs"
             if git push origin HEAD:main; then
               exit 0
             fi
