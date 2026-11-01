@@ -263,7 +263,7 @@ struct RBx9DylibStorageView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Saved Tweak Library")
                             .font(.headline)
-                        Text("\\(vault.items.count) unique files · saved on this iPhone")
+                        Text("\(vault.items.count) unique files · saved on this iPhone")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -328,7 +328,7 @@ struct RBx9DylibStorageView: View {
                         }
                     }
                     if !showNotice && (duplicates > 0 || conflicts > 0) {
-                        notice = "\\(added) saved, \\(duplicates) duplicate files skipped, \\(conflicts) filename conflicts skipped."
+                        notice = "\(added) saved, \(duplicates) duplicate files skipped, \(conflicts) filename conflicts skipped."
                         showNotice = true
                     }
                 }
