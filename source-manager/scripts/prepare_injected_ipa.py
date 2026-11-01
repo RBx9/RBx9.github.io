@@ -9,6 +9,7 @@ import shutil
 import sys
 import tempfile
 import zipfile
+import traceback
 
 import lief
 
@@ -67,9 +68,22 @@ def main():
         for binary in binaries:
             binary.remove_signature()
         main_macho.write(str(exe))
+        verified = lief.MachO.parse(exe)
+        if not verified or verified.size != main_macho.size:
+            raise ValueError("Output Mach-O architecture parsing failed")
         for name in names:
-            assert all(b.find_library("@executable_path/Frameworks/" + name)
-                       for b in [lief.MachO.parse(exe).at(i) for i in range(main_macho.size)])
+            expected_path = "@executable_path/Frameworks/" + name
+            for index in range(verified.size):
+                binary = verified.at(index)
+                present = binary.find_library(expected_path)
+                print("Check injected load command", expected_path, "slice", index,
+                      "found", bool(present), flush=True)
+                if not present:
+                    available = [lib.name for lib in binary.libraries]
+                    raise ValueError(
+                        f"Injected load command missing after writing: {expected_path}; "
+                        f"available libraries: {available}"
+                    )
         shutil.rmtree(app / "_CodeSignature", ignore_errors=True)
         with zipfile.ZipFile(a.output, "w", compression=zipfile.ZIP_DEFLATED) as z:
             for item in Path(tmp).rglob("*"):
@@ -84,5 +98,6 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as error:
-        print("Package preparation failed:", error, file=sys.stderr)
+        print("Package preparation failed:", repr(error), file=sys.stderr)
+        traceback.print_exc()
         sys.exit(1)
