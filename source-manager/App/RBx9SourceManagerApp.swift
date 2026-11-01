@@ -392,12 +392,49 @@ final class GitHubManager: ObservableObject {
     func discardStagedFiles(_ files:[StagedSourceFile]) {
         for file in files { try? FileManager.default.removeItem(at:file.url) }
     }
-    func publishSelectedIPA(_ ipa:StagedSourceFile, libraries:[StagedSourceFile]) {
-        guard !busy else { alertMessage = "A publish operation is already running."; return }
-        if libraries.isEmpty {
-            Task { await upload(stagedFile:ipa.url,originalName:ipa.name,sileo:false) }
-        } else {
-            Task { await uploadInjectedIPA(ipa,libraries:libraries) }
+    /// Rename the downloadable Release asset without changing the app bundle ID.
+    /// Keep extensions fixed and use a filename format GitHub will not rewrite.
+    func checkedPublicationName(_ proposed:String, ext:String) throws -> String {
+        var base = proposed.trimmingCharacters(in:.whitespacesAndNewlines)
+        if base.lowercased().hasSuffix("." + ext) {
+            base = String(base.dropLast(ext.count + 1))
+        }
+        base = base.replacingOccurrences(of:" ",with:"-")
+        guard base.range(of:"^[A-Za-z0-9][A-Za-z0-9._-]{0,96}$",
+                         options:.regularExpression) != nil,
+              !base.contains("..") else {
+            throw ManagerError.message(
+                "Enter a file name using letters, numbers, spaces, dots, hyphens or underscores (maximum 97 characters)."
+            )
+        }
+        return base + "." + ext
+    }
+    @discardableResult
+    func publishSelectedIPA(_ ipa:StagedSourceFile, libraries:[StagedSourceFile], publishedName:String) -> Bool {
+        guard !busy else { alertMessage = "A publish operation is already running."; return false }
+        do {
+            let name = try checkedPublicationName(publishedName, ext:"ipa")
+            if libraries.isEmpty {
+                Task { await upload(stagedFile:ipa.url,originalName:name,sileo:false) }
+            } else {
+                Task { await uploadInjectedIPA(ipa,libraries:libraries,outputName:name) }
+            }
+            return true
+        } catch {
+            alertMessage = error.localizedDescription
+            return false
+        }
+    }
+    @discardableResult
+    func publishSelectedDEB(_ deb:StagedSourceFile, publishedName:String) -> Bool {
+        guard !busy else { alertMessage = "A publish operation is already running."; return false }
+        do {
+            let name = try checkedPublicationName(publishedName,ext:"deb")
+            Task { await upload(stagedFile:deb.url,originalName:name,sileo:true) }
+            return true
+        } catch {
+            alertMessage = error.localizedDescription
+            return false
         }
     }
     private func uploadReleaseAsset(_ path:URL, name:String, releaseID:Int) async throws {
@@ -416,7 +453,7 @@ final class GitHubManager: ObservableObject {
             throw ManagerError.message("Upload failed (\(statusCode)): \(msg.prefix(240))")
         }
     }
-    private func uploadInjectedIPA(_ ipa:StagedSourceFile, libraries:[StagedSourceFile]) async {
+    private func uploadInjectedIPA(_ ipa:StagedSourceFile, libraries:[StagedSourceFile], outputName:String) async {
         busy = true
         defer {
             busy = false
@@ -424,13 +461,18 @@ final class GitHubManager: ObservableObject {
         }
         do {
             guard libraries.count <= 16 else { throw ManagerError.message("Choose up to 16 dylibs.") }
+            let fileName = try checkedPublicationName(outputName,ext:"ipa")
+            let metadata = FileManager.default.temporaryDirectory
+                .appendingPathComponent("rbx9-publish-name-" + UUID().uuidString + ".txt")
+            defer { try? FileManager.default.removeItem(at:metadata) }
+            try Data((fileName + "\n").utf8).write(to:metadata,options:.atomic)
             let names = libraries.map { $0.name.lowercased() }
             guard Set(names).count == libraries.count else {
                 throw ManagerError.message("Duplicate dylib filenames aren't allowed.")
             }
             status = "Creating injection release…"
             let tag = "source-manager-inject-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8))"
-            let body = "Prepared by RBx9 Source Manager. Original IPA: \(ipa.name). Dylibs: \(libraries.map(\.name).joined(separator:", ")). Output is unsigned and must be signed before installation."
+            let body = "Prepared by RBx9 Source Manager. Original IPA: \(ipa.name). Download filename: \(fileName). Dylibs: \(libraries.map(\.name).joined(separator:", ")). Output is unsigned and must be signed before installation."
             let release = try parse(try await api("POST","/repos/\(repository)/releases",
                 body:try json(["tag_name":tag,"name":"Injected \(ipa.name)",
                                "body":body,"draft":true,"prerelease":false])))
@@ -439,6 +481,7 @@ final class GitHubManager: ObservableObject {
             }
             status = "Uploading original IPA…"
             try await uploadReleaseAsset(ipa.url,name:"original-ipa.upload",releaseID:id)
+            try await uploadReleaseAsset(metadata,name:"publish-name.txt",releaseID:id)
             for (index,lib) in libraries.enumerated() {
                 status = "Uploading dylib \(index + 1)/\(libraries.count)…"
                 try await uploadReleaseAsset(lib.url,name:lib.name,releaseID:id)
@@ -708,6 +751,7 @@ struct AppsScreen: View {
     @State private var importer = false
     @State private var libraryImporter = false
     @State private var stagedIPA: StagedSourceFile?
+    @State private var publicationBaseName = ""
     @State private var stagedLibraries: [StagedSourceFile] = []
     @State private var pendingDelete: SourceApp?
 
@@ -731,6 +775,15 @@ struct AppsScreen: View {
                             Label(ipa.name,systemImage:"doc.zipper")
                                 .font(.headline)
                                 .lineLimit(2)
+                            HStack(spacing:8) {
+                                TextField("Download filename",text:$publicationBaseName)
+                                    .textFieldStyle(.roundedBorder)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                Text(".ipa").font(.subheadline.monospaced()).foregroundStyle(.secondary)
+                            }
+                            Text("Rename the downloadable IPA before publishing. This doesn't change the app's name or bundle ID.")
+                                .font(.caption).foregroundStyle(.secondary)
                             Text(stagedLibraries.isEmpty ? "No dylibs selected. You can upload the original IPA or add libraries first." : "\(stagedLibraries.count) selected dylib(s) will be embedded in the IPA.")
                                 .font(.caption).foregroundStyle(.secondary)
                             Button {
@@ -756,9 +809,11 @@ struct AppsScreen: View {
                                 symbol:"arrow.up.doc.fill"
                             ) {
                                 guard let ipa = stagedIPA else { return }
-                                manager.publishSelectedIPA(ipa,libraries:stagedLibraries)
-                                stagedIPA = nil
-                                stagedLibraries = []
+                                if manager.publishSelectedIPA(ipa,libraries:stagedLibraries,publishedName:publicationBaseName) {
+                                    stagedIPA = nil
+                                    stagedLibraries = []
+                                    publicationBaseName = ""
+                                }
                             }
                             .disabled(manager.busy || !manager.connected)
                             Button("Cancel selection",role:.cancel) {
@@ -767,6 +822,7 @@ struct AppsScreen: View {
                                 }
                                 stagedIPA = nil
                                 stagedLibraries = []
+                                publicationBaseName = ""
                             }.font(.caption)
                         }
                     }
@@ -831,6 +887,12 @@ struct AppsScreen: View {
                             stagedLibraries = []
                         }
                         stagedIPA = manager.stageSelectedFile(url,expected:"ipa")
+                        publicationBaseName = stagedIPA?.name.replacingOccurrences(
+                            of:".ipa",with:"",options:[.caseInsensitive,.anchored],range:nil
+                        ) ?? ""
+                        if let ipa = stagedIPA {
+                            publicationBaseName = (ipa.name as NSString).deletingPathExtension
+                        }
                         importer = false
                     },
                     onCancel: { importer = false }
@@ -944,6 +1006,8 @@ struct AppEditor: View {
 struct DebsScreen: View {
     @EnvironmentObject var manager: GitHubManager
     @State private var importer = false
+    @State private var stagedDEB: StagedSourceFile?
+    @State private var publicationBaseName = ""
     @State private var pendingDelete: SourceDeb?
 
     var body: some View {
@@ -960,6 +1024,33 @@ struct DebsScreen: View {
                         importer = true
                     }
                     .disabled(manager.busy || !manager.connected)
+                    if let deb = stagedDEB {
+                        VStack(alignment:.leading,spacing:12) {
+                            Label(deb.name,systemImage:"shippingbox.fill")
+                                .font(.headline).lineLimit(2)
+                            HStack(spacing:8) {
+                                TextField("Download filename",text:$publicationBaseName)
+                                    .textFieldStyle(.roundedBorder)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                Text(".deb").font(.subheadline.monospaced()).foregroundStyle(.secondary)
+                            }
+                            Text("Rename the downloadable DEB before publishing. Package metadata inside the DEB stays unchanged.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            PrimaryButton(title:"Publish DEB",symbol:"arrow.up.doc.fill") {
+                                if manager.publishSelectedDEB(deb,publishedName:publicationBaseName) {
+                                    stagedDEB = nil
+                                    publicationBaseName = ""
+                                }
+                            }
+                            .disabled(manager.busy || !manager.connected)
+                            Button("Cancel selection",role:.cancel) {
+                                if let deb = stagedDEB { manager.discardStagedFiles([deb]) }
+                                stagedDEB = nil
+                                publicationBaseName = ""
+                            }.font(.caption)
+                        }
+                    }
                 }
                 .listRowBackground(Color.white.opacity(0.055))
                 Section("Published tweaks") {
@@ -1003,7 +1094,11 @@ struct DebsScreen: View {
                 PackageDocumentPicker(
                     multiple:false,
                     onPick: { urls in
-                        if let url = urls.first { manager.importFile(url,sileo:true) }
+                        if let url = urls.first {
+                            if let previous = stagedDEB { manager.discardStagedFiles([previous]) }
+                            stagedDEB = manager.stageSelectedFile(url,expected:"deb")
+                            publicationBaseName = stagedDEB.map { ($0.name as NSString).deletingPathExtension } ?? ""
+                        }
                         importer = false
                     },
                     onCancel: { importer = false }
