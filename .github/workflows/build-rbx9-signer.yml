@@ -84,6 +84,8 @@ jobs:
           grep -F '230_000_000' feather/Feather/FeatherApp.swift
           grep -F 'RBx9TransmissionStartup()' feather/Feather/FeatherApp.swift
           ! grep -Fq 'image="Glyph"' "feather/Feather/Resources/Launch Screen.storyboard"
+          grep -F 'image="RBx9LaunchIcon"' "feather/Feather/Resources/Launch Screen.storyboard"
+          grep -F '<image name="RBx9LaunchIcon"' "feather/Feather/Resources/Launch Screen.storyboard"
           grep -F 'red="0.022" green="0.045" blue="0.085"' "feather/Feather/Resources/Launch Screen.storyboard"
           grep -F 'com.rbx9.signer.ipa' feather/Feather/Resources/Info.plist
           test -f feather/Feather/Resources/Assets.xcassets/RBx9LaunchIcon.imageset/rbx9-launch.png
@@ -173,7 +175,7 @@ jobs:
             gh release create "$TAG" "$IPA" --repo "$GH_REPO" \
               --target "$GITHUB_SHA" \
               --title "RBx9 Signer v1.3.11 (Unsigned IPA)" \
-              --notes "Fixed Feather's system launch storyboard by removing its old Glyph. Restores the short cyan RBx9 transmission startup. Keeps all signing and Dylib Storage features. Existing injection and signing remain supported. Existing signing and reinstall workflows remain in place. Unsigned IPA for iOS 16+; sign with your own certificate. Based on Feather GPL-3.0; source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
+              --notes "Feather's system launch screen now displays RBx9's icon on its branded dark background, then transitions to the short cyan RBx9 animation. No Feather glyph. All signing and Dylib Storage features retained. Existing injection and signing remain supported. Existing signing and reinstall workflows remain in place. Unsigned IPA for iOS 16+; sign with your own certificate. Based on Feather GPL-3.0; source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
               --latest=false
           fi
 
@@ -188,7 +190,7 @@ jobs:
         run: |
           set -euo pipefail
           cd source-main
-          printf '%s\n' 'RBx9 v1.3.11: removes Feather's old system startup Glyph and restores the fast RBx9 transmission animation; retains Dylib Storage and import/export.' > ../rbx9-release-notes.txt
+          printf '%s\n' 'RBx9 v1.3.11: iOS system launch screen now uses RBx9 artwork instead of Feather Glyph, with fast RBx9 transmission animation afterward.' > ../rbx9-release-notes.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           # Start over from fresh main on every retry; rebasing generated files
