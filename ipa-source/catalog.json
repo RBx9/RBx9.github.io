@@ -187,6 +187,15 @@
     "category": "utilities",
     "versions": [
       {
+        "version": "1.3.7",
+        "buildVersion": "1",
+        "date": "2026-11-01T02:09:14Z",
+        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.7/RBx9-v1.3.7-unsigned.ipa",
+        "size": 20185689,
+        "minOSVersion": "16.0",
+        "localizedDescription": "RBx9 v1.3.7: native transmission-style startup animation with Reduce Motion support."
+      },
+      {
         "version": "1.3.6",
         "date": "2026-10-31T23:13:14Z",
         "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.6/RBx9-v1.3.6-unsigned.ipa",
