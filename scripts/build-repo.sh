@@ -28,11 +28,11 @@ while IFS='|' read -r url name expected || [[ -n "$url" ]]; do
 done < package-sources.txt
 
 if [[ "$count" -eq 0 ]]; then
-  echo "ERROR: Refusing to publish an empty Sileo repository." >&2
-  exit 1
+  echo "No packages remain; publishing an empty but valid Sileo index."
+  printf '\n' > Packages
+else
+  dpkg-scanpackages --multiversion debs /dev/null > Packages
 fi
-
-dpkg-scanpackages --multiversion debs /dev/null > Packages
 # Display RootHide compatibility in Sileo without altering the signed .deb.
 # Override only the index Name field for this exact package and architecture.
 python3 - <<'PY'
