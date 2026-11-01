@@ -101,6 +101,15 @@
     "tintColor": "#2DE2CF",
     "versions": [
       {
+        "version": "1.3.13",
+        "buildVersion": "1",
+        "date": "2026-11-01T10:22:55Z",
+        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.13/RBx9-v1.3.13-unsigned.ipa",
+        "size": 17064003,
+        "minOSVersion": "16.0",
+        "localizedDescription": "RBx9 v1.3.13: new 1024x1024 dark navy RBx9 icon for app and launch screen; previous icon safely backed up for easy rollback."
+      },
+      {
         "buildVersion": "1",
         "date": "2026-11-01T09:46:47Z",
         "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.12/RBx9-v1.3.12-unsigned.ipa",
