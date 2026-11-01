@@ -73,6 +73,10 @@ final class GitHubManager: ObservableObject {
     @Published var ipaDescription = "Browse IPAs from RBx9."
     @Published var sileoName = "RBx9 Repo"
     @Published var sileoDescription = "RBx9's jailbreak tweak repository for Sileo"
+    @Published var ipaIconURL = "https://rbx9.github.io/icon.png"
+    @Published var sileoIconURL = "https://rbx9.github.io/CydiaIcon.png"
+    @Published var alertMessage: String? = nil
+    @Published var hiddenBundles: Set<String> = []
     private var token = SecretStore.read()
 
     init() {
@@ -195,8 +199,12 @@ final class GitHubManager: ObservableObject {
             username = user["login"] as? String ?? ""
             let (catalogData,_) = try await file("ipa-source/catalog.json")
             catalog = try parse(catalogData)
+            if let (hiddenData, _) = try? await file("ipa-source/hidden-apps.json"),
+               let list = try? JSONDecoder().decode([String].self, from: hiddenData) {
+                hiddenBundles = Set(list)
+            } else { hiddenBundles = [] }
             apps = catalog.compactMap { key, entry -> SourceApp? in
-                guard let a = entry as? [String:Any] else { return nil }
+                guard !hiddenBundles.contains(key), let a = entry as? [String:Any] else { return nil }
                 let versions = a["versions"] as? [[String:Any]] ?? []
                 return SourceApp(id:key,name:a["name"] as? String ?? key,
                                  version:versions.first?["version"] as? String ?? "—",
@@ -215,11 +223,13 @@ final class GitHubManager: ObservableObject {
                let obj = try? parse(data) {
                 ipaName = obj["name"] as? String ?? ipaName
                 ipaDescription = obj["description"] as? String ?? ipaDescription
+                ipaIconURL = obj["iconURL"] as? String ?? ipaIconURL
             }
             if let (data,_) = try? await file("sileo-settings.json"),
                let obj = try? parse(data) {
                 sileoName = obj["name"] as? String ?? sileoName
                 sileoDescription = obj["description"] as? String ?? sileoDescription
+                sileoIconURL = "https://rbx9.github.io/CydiaIcon.png?v=\(Int(Date().timeIntervalSince1970))"
             }
             status = "Synced with GitHub"
         } catch { status = error.localizedDescription }
@@ -238,7 +248,14 @@ final class GitHubManager: ObservableObject {
     }
     func removeApp(bundle:String) async {
         await work("Removing app from ESign source") {
-            var value = self.catalog
+            // Keep a durable suppression entry so scheduled catalog imports do
+            // not silently bring a deleted listing back into the live feed.
+            var hidden = self.hiddenBundles
+            hidden.insert(bundle)
+            let hiddenData = try JSONEncoder().encode(Array(hidden).sorted())
+            try await self.put("ipa-source/hidden-apps.json",data:hiddenData)
+            let (latestData, _) = try await self.file("ipa-source/catalog.json")
+            var value = try self.parse(latestData)
             value.removeValue(forKey:bundle)
             try await self.put("ipa-source/catalog.json",data:try self.json(value))
         }
@@ -249,8 +266,6 @@ final class GitHubManager: ObservableObject {
             let lines = String(decoding:data,as:UTF8.self).components(separatedBy:"\n")
             let kept = lines.filter { $0 != line }
             guard kept.count != lines.count else { throw ManagerError.message("Package already removed") }
-            let remaining = kept.filter { !$0.isEmpty && !$0.hasPrefix("#") }
-            guard !remaining.isEmpty else { throw ManagerError.message("The current Sileo publisher requires at least one package.") }
             try await self.put("package-sources.txt",data:Data((kept.joined(separator:"\n").trimmingCharacters(in:.newlines)+"\n").utf8))
         }
     }
@@ -260,8 +275,11 @@ final class GitHubManager: ObservableObject {
         do {
             try await action()
             await refresh()
-            status = "Saved to GitHub. Publishing will finish after GitHub Actions and Pages update."
-        } catch { status = error.localizedDescription }
+            status = "Saved to GitHub. GitHub Actions and Pages will publish the update."
+        } catch {
+            status = error.localizedDescription
+            alertMessage = error.localizedDescription
+        }
         busy = false
     }
     func updateSourceMetadata(sileo:Bool,name:String,description:String) async {
@@ -283,6 +301,7 @@ final class GitHubManager: ObservableObject {
                 for path in ["CydiaIcon.png","CydiaIcon@2x.png","CydiaIcon@3x.png"] {
                     try await self.put(path,data:png)
                 }
+                self.sileoIconURL = "https://rbx9.github.io/CydiaIcon.png?v=\(Int(Date().timeIntervalSince1970))"
             } else {
                 try await self.put("ipa-source/source-icon.png",data:png)
                 let path = "ipa-source/source-settings.json"
@@ -290,6 +309,7 @@ final class GitHubManager: ObservableObject {
                 if let (data,_) = try? await self.file(path) { obj = (try? self.parse(data)) ?? [:] }
                 obj["iconURL"] = "https://rbx9.github.io/ipa-source/source-icon.png?v=\(Int(Date().timeIntervalSince1970))"
                 try await self.put(path,data:try self.json(obj))
+                self.ipaIconURL = obj["iconURL"] as? String ?? self.ipaIconURL
             }
         }
     }
@@ -300,58 +320,96 @@ final class GitHubManager: ObservableObject {
         while let chunk = try handle.read(upToCount:1_048_576), !chunk.isEmpty { digest.update(data:chunk) }
         return digest.finalize().map { String(format:"%02x",$0) }.joined()
     }
-    func upload(_ sourceURL:URL,sileo:Bool) async {
-        busy = true
-        defer { busy = false }
-        let accessed = sourceURL.startAccessingSecurityScopedResource()
-        defer { if accessed { sourceURL.stopAccessingSecurityScopedResource() } }
-        let ext = sileo ? "deb" : "ipa"
-        guard sourceURL.pathExtension.lowercased() == ext else { status = "Please select a .\(ext) file"; return }
+    // Stage selected Files documents immediately, while the security-scoped
+    // URL returned by the picker is valid; the long upload runs afterward.
+    func importFile(_ url: URL, sileo: Bool) {
+        let expected = sileo ? "deb" : "ipa"
+        guard url.pathExtension.lowercased() == expected else {
+            alertMessage = "Choose a .\(expected) file from Files."
+            return
+        }
+        guard !busy else { status = "A source operation is already running."; return }
+        let opened = url.startAccessingSecurityScopedResource()
+        defer { if opened { url.stopAccessingSecurityScopedResource() } }
+        let local = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rbx9-import-\(UUID().uuidString).\(expected)")
         do {
-            status = "Preparing .\(ext) upload…"
-            let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString+"."+ext)
-            try FileManager.default.copyItem(at:sourceURL,to:temp)
-            defer { try? FileManager.default.removeItem(at:temp) }
-            let name = sourceURL.lastPathComponent
-            let safe = name.replacingOccurrences(of:"[^a-zA-Z0-9._-]",with:"-",options:.regularExpression)
+            try FileManager.default.copyItem(at:url, to:local)
+            let originalName = url.lastPathComponent
+            Task { await upload(stagedFile:local, originalName:originalName, sileo:sileo) }
+        } catch {
+            status = "Could not access selected file: \(error.localizedDescription)"
+            alertMessage = status
+        }
+    }
+    private func upload(stagedFile:URL, originalName:String, sileo:Bool) async {
+        guard !busy else {
+            try? FileManager.default.removeItem(at:stagedFile)
+            return
+        }
+        busy = true
+        defer {
+            busy = false
+            try? FileManager.default.removeItem(at:stagedFile)
+        }
+        do {
+            let ext = sileo ? "deb" : "ipa"
+            status = "Preparing \(ext.uppercased()) upload…"
+            let sanitized = originalName
+                .replacingOccurrences(of:"[^a-zA-Z0-9._-]",with:"-",options:.regularExpression)
+            guard sanitized.lowercased().hasSuffix(".\(ext)") else {
+                throw ManagerError.message("Invalid \(ext.uppercased()) filename")
+            }
             let tag = "source-manager-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8))"
+            // A draft prevents the IPA indexing workflow from importing an
+            // incomplete release that does not have its binary asset yet.
             let draft = try parse(try await api("POST","/repos/\(repository)/releases",body:try json([
-                "tag_name":tag, "name":safe, "body":"Uploaded using RBx9 Source Manager",
+                "tag_name":tag, "name":sanitized,
+                "body":"Uploaded using RBx9 Source Manager",
                 "draft":true, "prerelease":false
             ])))
-            guard let id = draft["id"] as? Int else { throw ManagerError.message("GitHub did not create a draft release") }
-            status = "Uploading \(name) to GitHub…"
-            guard var components = URLComponents(string:"https://uploads.github.com/repos/\(repository)/releases/\(id)/assets") else {
-                throw ManagerError.message("Invalid GitHub upload URL")
+            guard let id = draft["id"] as? Int else {
+                throw ManagerError.message("GitHub did not create a draft release")
             }
-            components.queryItems = [URLQueryItem(name:"name",value:name)]
+            status = "Uploading \(sanitized)…"
+            var components = URLComponents(string:"https://uploads.github.com/repos/\(repository)/releases/\(id)/assets")!
+            components.queryItems = [URLQueryItem(name:"name",value:sanitized)]
             var req = URLRequest(url:components.url!)
             req.httpMethod = "POST"
             req.setValue("Bearer \(token)",forHTTPHeaderField:"Authorization")
             req.setValue("application/vnd.github+json",forHTTPHeaderField:"Accept")
             req.setValue("application/octet-stream",forHTTPHeaderField:"Content-Type")
             req.setValue("2022-11-28",forHTTPHeaderField:"X-GitHub-Api-Version")
-            let (uploadData,response) = try await URLSession.shared.upload(for:req,fromFile:temp)
+            let (uploadData,response) = try await URLSession.shared.upload(for:req,fromFile:stagedFile)
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard (200...299).contains(code) else {
                 throw ManagerError.message("Upload failed (\(code)): \(String(decoding:uploadData,as:UTF8.self).prefix(250))")
             }
             let asset = try parse(uploadData)
             guard let downloadURL = asset["browser_download_url"] as? String else {
-                throw ManagerError.message("Missing download URL")
+                throw ManagerError.message("GitHub did not return an asset URL")
             }
-            status = "Publishing release…"
-            _ = try await api("PATCH","/repos/\(repository)/releases/\(id)",body:try json(["draft":false]))
+            // For Sileo, add the package first: the metadata builder verifies
+            // the SHA-256 and then rebuilds the public package index.
             if sileo {
-                let sha256 = try fileHash(temp)
-                let (source,_) = try await file("package-sources.txt")
+                status = "Adding DEB to Sileo package index…"
+                let sha256 = try fileHash(stagedFile)
+                let (source, _) = try await file("package-sources.txt")
                 let old = String(decoding:source,as:UTF8.self).trimmingCharacters(in:.newlines)
-                let row = "\(downloadURL)|\(safe)|\(sha256)"
-                if !old.contains(row) { try await put("package-sources.txt",data:Data((old+"\n"+row+"\n").utf8)) }
+                let row = "\(downloadURL)|\(sanitized)|\(sha256)"
+                guard !old.contains(row) else {
+                    throw ManagerError.message("This package is already in the source")
+                }
+                try await put("package-sources.txt",data:Data((old+"\n"+row+"\n").utf8))
             }
-            status = "Release uploaded. GitHub Actions is updating the \(sileo ? "Sileo" : "ESign") source."
+            status = "Publishing GitHub release…"
+            _ = try await api("PATCH","/repos/\(repository)/releases/\(id)",body:try json(["draft":false]))
             await refresh()
-        } catch { status = error.localizedDescription }
+            status = "Uploaded successfully. Source publishing is running; refresh your client when finished."
+        } catch {
+            status = error.localizedDescription
+            alertMessage = error.localizedDescription
+        }
     }
 }
 
