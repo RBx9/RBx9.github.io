@@ -107,6 +107,15 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.3.12",
+          "buildVersion": "1",
+          "date": "2026-11-01T09:46:47Z",
+          "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.12/RBx9-v1.3.12-unsigned.ipa",
+          "size": 20212032,
+          "minOSVersion": "16.0",
+          "localizedDescription": "RBx9 v1.3.12: streamlined Dylib Storage, swipe left to delete, long press to export or rename. Preserves previous launch improvements and signing functionality."
+        },
+        {
           "version": "1.3.11",
           "buildVersion": "1",
           "date": "2026-11-01T07:53:01Z",
@@ -160,11 +169,11 @@
           "version": "1.3.6"
         }
       ],
-      "version": "1.3.11",
-      "versionDate": "2026-11-01T07:53:01Z",
-      "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.11/RBx9-v1.3.11-unsigned.ipa",
-      "size": 20212907,
-      "versionDescription": "RBx9 v1.3.11: one RBx9-branded iOS launch storyboard instead of Feather Glyph; no separate startup animation.",
+      "version": "1.3.12",
+      "versionDate": "2026-11-01T09:46:47Z",
+      "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.12/RBx9-v1.3.12-unsigned.ipa",
+      "size": 20212032,
+      "versionDescription": "RBx9 v1.3.12: streamlined Dylib Storage, swipe left to delete, long press to export or rename. Preserves previous launch improvements and signing functionality.",
       "minOSVersion": "16.0"
     },
     {
