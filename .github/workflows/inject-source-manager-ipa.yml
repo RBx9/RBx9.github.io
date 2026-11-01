@@ -1,0 +1,70 @@
+name: Inject Selected Dylibs into Source Manager IPA
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Source Manager injected-IPA draft release tag'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: source-manager-injection-${{ github.event.release.tag_name || inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  inject-and-publish:
+    if: startsWith(github.event.release.tag_name || inputs.release_tag, 'source-manager-inject-')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Mach-O packaging tool
+        run: python -m pip install 'lief==0.17.1'
+      - name: Download staged IPA and selected dylibs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/staged"
+          gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/staged" \
+            --pattern 'original-ipa.upload' --pattern '*.dylib'
+          test -s "$RUNNER_TEMP/staged/original-ipa.upload"
+          find "$RUNNER_TEMP/staged" -maxdepth 1 -name '*.dylib' -print | grep -q .
+      - name: Repackage and verify injected IPA
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          files=("$RUNNER_TEMP"/staged/*.dylib)
+          args=()
+          for file in "${files[@]}"; do
+            test -s "$file"
+            args+=(--library "$file")
+          done
+          output="$RUNNER_TEMP/RBx9-Injected-${RELEASE_TAG}.ipa"
+          python source-manager/scripts/prepare_injected_ipa.py \
+            --ipa "$RUNNER_TEMP/staged/original-ipa.upload" \
+            "${args[@]}" --output "$output"
+          unzip -tq "$output"
+          echo "OUTPUT_IPA=$output" >> "$GITHUB_ENV"
+      - name: Attach only the verified injected IPA for source publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "$RELEASE_TAG" "$OUTPUT_IPA"
+          # The release's published event starts before the injection result
+          # exists, so explicitly rebuild the ESign source afterward.
+          gh workflow run build-ipa-source.yml \
+            --ref main -f "release_tag=$RELEASE_TAG"
