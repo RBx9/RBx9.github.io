@@ -36,24 +36,13 @@ jobs:
             -sdk iphoneos -destination 'generic/platform=iOS' \
             -derivedDataPath "$RUNNER_TEMP/SourceManagerBuild" \
             CODE_SIGNING_ALLOWED=NO build
-      - name: Test IPA dylib packaging before publishing the manager
+      - name: Build a sample iOS library for injection test
         run: |
           set -euo pipefail
-          python3 -m venv "$RUNNER_TEMP/rbx9-lief-venv"
-          "$RUNNER_TEMP/rbx9-lief-venv/bin/python" -m pip install "lief==0.17.6"
           echo 'int rbx9_source_manager_test(void) { return 9; }' > "$RUNNER_TEMP/test-dylib.c"
           xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=16.0 \
-            -dynamiclib -o "$RUNNER_TEMP/RBx9Test.dylib" "$RUNNER_TEMP/test-dylib.c"
-          app="$RUNNER_TEMP/SourceManagerBuild/Build/Products/Release-iphoneos/RBx9SourceManager.app"
-          mkdir -p "$RUNNER_TEMP/test-payload/Payload"
-          cp -R "$app" "$RUNNER_TEMP/test-payload/Payload/"
-          (cd "$RUNNER_TEMP/test-payload" && /usr/bin/zip -qry "$RUNNER_TEMP/test-original.ipa" Payload)
-          "$RUNNER_TEMP/rbx9-lief-venv/bin/python" source-manager/scripts/prepare_injected_ipa.py \
-            --ipa "$RUNNER_TEMP/test-original.ipa" \
-            --library "$RUNNER_TEMP/RBx9Test.dylib" \
-            --output "$RUNNER_TEMP/test-injected.ipa"
-          unzip -tq "$RUNNER_TEMP/test-injected.ipa"
-      - name: Package IPA
+            -dynamiclib -o "$GITHUB_WORKSPACE/RBx9Test.dylib" "$RUNNER_TEMP/test-dylib.c"
+      - name: Package unsigned IPA
         run: |
           set -euo pipefail
           app="$RUNNER_TEMP/SourceManagerBuild/Build/Products/Release-iphoneos/RBx9SourceManager.app"
@@ -62,18 +51,49 @@ jobs:
           cp -R "$app" "$RUNNER_TEMP/Payload/"
           cd "$RUNNER_TEMP"
           /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9SourceManager-v1.2.0-unsigned.ipa" Payload
-          test -s "$GITHUB_WORKSPACE/RBx9SourceManager-v1.2.0-unsigned.ipa"
-      - name: Publish unsigned IPA in GitHub Releases
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manager-with-test-dylib
+          path: |
+            RBx9SourceManager-v1.2.0-unsigned.ipa
+            RBx9Test.dylib
+          if-no-files-found: error
+          retention-days: 3
+
+  test-and-publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: manager-with-test-dylib
+          path: ${{ runner.temp }}/rbx9-build
+      - name: Install injection tooling
+        run: python -m pip install 'lief==0.17.6'
+      - name: Test IPA dylib injection and verify archive
+        run: |
+          set -euo pipefail
+          python source-manager/scripts/prepare_injected_ipa.py \
+            --ipa "$RUNNER_TEMP/rbx9-build/RBx9SourceManager-v1.2.0-unsigned.ipa" \
+            --library "$RUNNER_TEMP/rbx9-build/RBx9Test.dylib" \
+            --output "$RUNNER_TEMP/rbx9-test-injected.ipa"
+          unzip -tq "$RUNNER_TEMP/rbx9-test-injected.ipa"
+          test -s "$RUNNER_TEMP/rbx9-test-injected.ipa"
+      - name: Publish tested Source Manager IPA to GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           tag="rbx9-source-manager-v1.2.0"
-          asset="RBx9SourceManager-v1.2.0-unsigned.ipa"
+          asset="$RUNNER_TEMP/rbx9-build/RBx9SourceManager-v1.2.0-unsigned.ipa"
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "$asset" --clobber
           else
             gh release create "$tag" "$asset" --target "$GITHUB_SHA" \
               --title "RBx9 Source Manager v1.2.0 (Unsigned IPA)" \
-              --notes "Native Files picker, multi-dylib selection and verified GitHub Actions IPA packaging, plus ESign and Sileo source management. Unsigned IPA, sign with your certificate."
+              --notes "IPA and DEB Files selection, ESign and Sileo source management, and multi-dylib IPA injection via GitHub Actions with verification. The resulting IPA is unsigned and must be signed before installation."
           fi
