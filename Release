@@ -6,7 +6,7 @@ Components: main
 Version: 1.0
 Architectures: iphoneos-arm64e iphoneos-arm64 all
 Description: RBx9's jailbreak tweak repository for Sileo
-Date: Fri, 30 Oct 2026 04:18:17 GMT
+Date: Sun, 01 Nov 2026 02:25:18 GMT
 MD5Sum:
  b3aca4617d7cc179db25de5e1b0839c4             2233 Packages
  abd52093cffd009b16a30f34b92a36f1              965 Packages.gz
