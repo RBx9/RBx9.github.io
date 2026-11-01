@@ -56,6 +56,12 @@ struct SourceApp: Identifiable {
     let icon: String
     let developer: String
 }
+struct StagedSourceFile: Identifiable {
+    let id = UUID()
+    let url: URL
+    let name: String
+}
+
 struct SourceDeb: Identifiable {
     let line: String
     let filename: String
@@ -356,40 +362,100 @@ final class GitHubManager: ObservableObject {
     }
     // Stage selected Files documents immediately, while the security-scoped
     // URL returned by the picker is valid; the long upload runs afterward.
-    func importFile(_ url: URL, sileo: Bool) {
-        let expected = sileo ? "deb" : "ipa"
-        status = "Selected \(url.lastPathComponent)"
+    func stageSelectedFile(_ url:URL, expected:String) -> StagedSourceFile? {
         guard url.pathExtension.lowercased() == expected else {
-            alertMessage = "Choose a .\(expected) file from Files."
-            return
+            alertMessage = "Select a .\(expected) file from Files."
+            return nil
         }
-        guard !busy else { status = "A source operation is already running."; return }
-        let opened = url.startAccessingSecurityScopedResource()
-        defer { if opened { url.stopAccessingSecurityScopedResource() } }
-        let local = FileManager.default.temporaryDirectory
-            .appendingPathComponent("rbx9-import-\(UUID().uuidString).\(expected)")
+        let scope = url.startAccessingSecurityScopedResource()
+        defer { if scope { url.stopAccessingSecurityScopedResource() } }
+        let target = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rbx9-staged-\(UUID().uuidString).\(expected)")
         do {
-            var fileError: NSError?
-            var readError: Error?
-            // iCloud Drive and third-party providers can expose placeholder
-            // security-scoped URLs. Coordinated reads retrieve the actual file.
-            NSFileCoordinator(filePresenter:nil).coordinate(
-                readingItemAt:url, options:[], error:&fileError
-            ) { readableURL in
-                do { try FileManager.default.copyItem(at:readableURL,to:local) }
-                catch { readError = error }
+            var coordError: NSError?
+            var copyError: Error?
+            NSFileCoordinator(filePresenter:nil).coordinate(readingItemAt:url, options:[],error:&coordError) { readable in
+                do { try FileManager.default.copyItem(at:readable,to:target) }
+                catch { copyError = error }
             }
-            if let fileError { throw fileError }
-            if let readError { throw readError }
-            guard FileManager.default.fileExists(atPath:local.path) else {
-                throw ManagerError.message("Files did not provide the selected document.")
+            if let error = coordError { throw error }
+            if let error = copyError { throw error }
+            guard FileManager.default.fileExists(atPath:target.path) else {
+                throw ManagerError.message("Files could not copy this document.")
             }
-            let originalName = url.lastPathComponent
-            Task { await upload(stagedFile:local, originalName:originalName, sileo:sileo) }
+            return StagedSourceFile(url:target, name:url.lastPathComponent)
         } catch {
-            status = "Could not access selected file: \(error.localizedDescription)"
-            alertMessage = status
+            alertMessage = "Could not import \(url.lastPathComponent): \(error.localizedDescription)"
+            return nil
         }
+    }
+    func discardStagedFiles(_ files:[StagedSourceFile]) {
+        for file in files { try? FileManager.default.removeItem(at:file.url) }
+    }
+    func publishSelectedIPA(_ ipa:StagedSourceFile, libraries:[StagedSourceFile]) {
+        guard !busy else { alertMessage = "A publish operation is already running."; return }
+        if libraries.isEmpty {
+            Task { await upload(stagedFile:ipa.url,originalName:ipa.name,sileo:false) }
+        } else {
+            Task { await uploadInjectedIPA(ipa,libraries:libraries) }
+        }
+    }
+    private func uploadReleaseAsset(_ path:URL, name:String, releaseID:Int) async throws {
+        var parts = URLComponents(string:"https://uploads.github.com/repos/\(repository)/releases/\(releaseID)/assets")!
+        parts.queryItems = [URLQueryItem(name:"name",value:name)]
+        var request = URLRequest(url:parts.url!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)",forHTTPHeaderField:"Authorization")
+        request.setValue("application/vnd.github+json",forHTTPHeaderField:"Accept")
+        request.setValue("application/octet-stream",forHTTPHeaderField:"Content-Type")
+        request.setValue("2022-11-28",forHTTPHeaderField:"X-GitHub-Api-Version")
+        let (responseData,response) = try await URLSession.shared.upload(for:request,fromFile:path)
+        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200...299).contains(statusCode) else {
+            let msg = (try? parse(responseData)["message"] as? String) ?? String(decoding:responseData,as:UTF8.self)
+            throw ManagerError.message("Upload failed (\(statusCode)): \(msg.prefix(240))")
+        }
+    }
+    private func uploadInjectedIPA(_ ipa:StagedSourceFile, libraries:[StagedSourceFile]) async {
+        busy = true
+        defer {
+            busy = false
+            discardStagedFiles([ipa] + libraries)
+        }
+        do {
+            guard libraries.count <= 16 else { throw ManagerError.message("Choose up to 16 dylibs.") }
+            let names = libraries.map { $0.name.lowercased() }
+            guard Set(names).count == libraries.count else {
+                throw ManagerError.message("Duplicate dylib filenames aren't allowed.")
+            }
+            status = "Creating injection release…"
+            let tag = "source-manager-inject-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8))"
+            let body = "Prepared by RBx9 Source Manager. Original IPA: \(ipa.name). Dylibs: \(libraries.map(\.name).joined(separator:", ")). Output is unsigned and must be signed before installation."
+            let release = try parse(try await api("POST","/repos/\(repository)/releases",
+                body:try json(["tag_name":tag,"name":"Injected \(ipa.name)",
+                               "body":body,"draft":true,"prerelease":false])))
+            guard let id = release["id"] as? Int else {
+                throw ManagerError.message("Could not create GitHub release")
+            }
+            status = "Uploading original IPA…"
+            try await uploadReleaseAsset(ipa.url,name:"original-ipa.upload",releaseID:id)
+            for (index,lib) in libraries.enumerated() {
+                status = "Uploading dylib \(index + 1)/\(libraries.count)…"
+                try await uploadReleaseAsset(lib.url,name:lib.name,releaseID:id)
+            }
+            status = "Starting verified dylib packaging…"
+            _ = try await api("PATCH","/repos/\(repository)/releases/\(id)",body:try json(["draft":false]))
+            status = "Injection requested. GitHub Actions will publish the modified IPA only after it passes verification."
+            alertMessage = "Upload complete. Your modified IPA will be added to ESign after the GitHub injection workflow succeeds. If it fails, no injected IPA will be published."
+        } catch {
+            status = error.localizedDescription
+            alertMessage = error.localizedDescription
+        }
+    }
+    func importFile(_ url: URL, sileo: Bool) {
+        guard !busy else { alertMessage = "Please complete the current upload first."; return }
+        guard let file = stageSelectedFile(url,expected:sileo ? "deb" : "ipa") else { return }
+        Task { await upload(stagedFile:file.url, originalName:file.name, sileo:sileo) }
     }
     private func upload(stagedFile:URL, originalName:String, sileo:Bool) async {
         guard !busy else {
