@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m venv "$RUNNER_TEMP/rbx9-lief-venv"
-          "$RUNNER_TEMP/rbx9-lief-venv/bin/python" -m pip install "lief==0.17.1"
+          "$RUNNER_TEMP/rbx9-lief-venv/bin/python" -m pip install "lief==0.17.6"
           echo 'int rbx9_source_manager_test(void) { return 9; }' > "$RUNNER_TEMP/test-dylib.c"
           xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=16.0 \
             -dynamiclib -o "$RUNNER_TEMP/RBx9Test.dylib" "$RUNNER_TEMP/test-dylib.c"
