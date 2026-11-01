@@ -28,7 +28,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install Mach-O packaging tool
-        run: python -m pip install 'lief==0.17.1'
+        run: python -m pip install 'lief==0.17.6'
       - name: Download staged IPA and selected dylibs
         env:
           GH_TOKEN: ${{ github.token }}
