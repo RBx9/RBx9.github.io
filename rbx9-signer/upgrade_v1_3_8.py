@@ -71,7 +71,13 @@ s = s[:close] + "\n" + stored_section + s[close:]
 # Replace the original temporary-file import: save the original in the vault
 # immediately, then pass its URL to the signing queue.
 begin = s.index("\t\t.sheet(isPresented: $_isAddingPresenting) {")
-end = s.index("\n\t\t.animation(.smooth, value: options.injectionFiles)", begin)
+# Upstream and RBx9 versions use different indentation for chained modifiers.
+marker = ".animation(.smooth, value: options.injectionFiles)"
+animation = s.index(marker, begin)
+end = s.rfind("\n", begin, animation)
+confirmation = s.find('.confirmationDialog("Dylib Changes Ready"', begin, animation)
+if confirmation != -1:
+    end = s.rfind("\n", begin, confirmation)
 new_sheet = """        .sheet(isPresented: $_isAddingPresenting) {
             FileImporterRepresentableView(
                 allowedContentTypes: [.dylib, .deb],
