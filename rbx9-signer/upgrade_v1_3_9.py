@@ -247,4 +247,8 @@ cfg = config.read_text()
 old = "FEATHER_PROJECT_VERSION=1.3.8"
 if cfg.count(old) != 1: raise RuntimeError("Expected v1.3.8 app version")
 config.write_text(cfg.replace(old, "FEATHER_PROJECT_VERSION=1.3.9", 1))
+for index, line in enumerate(src.splitlines(), start=1):
+    if 466 <= index <= 494:
+        print(f"RBx9 diagnostic line {index}: {line}")
+raise RuntimeError("Diagnostic-only run: stop before Xcode; remove when corrected")
 print("RBx9 1.3.9: rename stored dylibs, preserve extensions, reject conflicts and update queue paths")
