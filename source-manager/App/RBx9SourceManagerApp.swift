@@ -462,65 +462,191 @@ struct Header:View {
         }.padding(.vertical,12)
     }
 }
-struct AppsScreen:View {
-    @EnvironmentObject var manager:GitHubManager
-    @State private var importer = false
-    @State private var pendingDelete:SourceApp?
-    var body:some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment:.leading,spacing:17) {
-                    Header(title:"ESign Source",subtitle:"Manage your iOS app library")
-                    Panel {
-                        HStack {
-                            Image(systemName:"checkmark.icloud").foregroundStyle(Theme.cyan)
-                            Text(manager.connected ? "Linked to @\(manager.username)" : "Sign in from Settings")
-                            Spacer()
-                            Text("\(manager.apps.count) apps").foregroundStyle(.secondary)
-                        }.font(.footnote)
-                        PrimaryButton(title:"Add IPA",symbol:"plus.circle.fill") { importer = true }
+struct SourceHeader: View {
+    @EnvironmentObject var manager: GitHubManager
+    let sileo: Bool
+    @State private var pickedPhoto: PhotosPickerItem?
+
+    private var sourceIcon: String { sileo ? manager.sileoIconURL : manager.ipaIconURL }
+    private var sourceTitle: String { sileo ? manager.sileoName : manager.ipaName }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 16) {
+            PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                ZStack(alignment: .bottomTrailing) {
+                    AsyncImage(url: URL(string: sourceIcon)) { phase in
+                        if case .success(let artwork) = phase {
+                            artwork.resizable().scaledToFill()
+                        } else {
+                            ZStack {
+                                Color.white.opacity(0.1)
+                                Image(systemName: sileo ? "shippingbox.fill" : "square.stack.3d.up.fill")
+                                    .font(.system(size: 29))
+                                    .foregroundStyle(Theme.cyan)
+                            }
+                        }
                     }
+                    .frame(width: 86, height: 86)
+                    .clipShape(RoundedRectangle(cornerRadius: 22))
+                    .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.black)
+                        .padding(7)
+                        .background(Theme.cyan, in: Circle())
+                        .offset(x: 6, y: 4)
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(manager.busy || !manager.connected)
+            .accessibilityLabel("Change \(sileo ? "Sileo" : "ESign") source icon")
+            VStack(alignment: .leading, spacing: 5) {
+                Text(sourceTitle).font(.title2.bold())
+                Text("Tap the icon to change the source picture")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text(sileo ? "Sileo package repository" : "ESign / Feather IPA repository")
+                    .font(.caption).foregroundStyle(Theme.cyan)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 12)
+        .onChange(of: pickedPhoto) { item in
+            guard let item else { return }
+            Task {
+                do {
+                    guard let data = try await item.loadTransferable(type: Data.self) else {
+                        manager.alertMessage = "Could not read the selected picture."
+                        return
+                    }
+                    await manager.updateSourceIcon(sileo:sileo, imageData:data)
+                } catch {
+                    manager.alertMessage = "Image import failed: \(error.localizedDescription)"
+                }
+                pickedPhoto = nil
+            }
+        }
+    }
+}
+struct StatusPanel: View {
+    @EnvironmentObject var manager: GitHubManager
+    var body: some View {
+        Group {
+            if manager.busy || !manager.status.isEmpty {
+                HStack(spacing: 10) {
+                    if manager.busy { ProgressView().tint(Theme.cyan) }
+                    Text(manager.status.isEmpty ? "Working…" : manager.status)
+                        .font(.caption).foregroundStyle(.primary)
+                    Spacer(minLength: 0)
+                }
+                .padding(12)
+                .background(.regularMaterial)
+            }
+        }
+    }
+}
+struct AppsScreen: View {
+    @EnvironmentObject var manager: GitHubManager
+    @State private var importer = false
+    @State private var pendingDelete: SourceApp?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    SourceHeader(sileo:false)
+                    HStack {
+                        Label(manager.connected ? "@\(manager.username)" : "Connect in Settings", systemImage: "checkmark.icloud")
+                        Spacer()
+                        Text("\(manager.apps.count) apps").foregroundStyle(.secondary)
+                    }
+                    .font(.caption)
+                    PrimaryButton(title:"Add IPA from Files", symbol:"plus.circle.fill") {
+                        importer = true
+                    }
+                    .disabled(manager.busy || !manager.connected)
+                }
+                .listRowBackground(Color.white.opacity(0.055))
+                Section("Published applications") {
                     ForEach(manager.apps) { app in
                         NavigationLink {
                             AppEditor(app:app)
                         } label: {
-                            HStack(spacing:14) {
-                                AsyncImage(url:URL(string:app.icon)) { image in image.resizable().scaledToFill() }
-                                    placeholder: { Image(systemName:"app.fill").resizable().scaledToFit().padding(12) }
-                                    .frame(width:52,height:52).background(.white.opacity(0.1)).clipShape(RoundedRectangle(cornerRadius:12))
+                            HStack(spacing: 13) {
+                                AsyncImage(url:URL(string:app.icon)) { image in
+                                    image.resizable().scaledToFill()
+                                } placeholder: {
+                                    Image(systemName:"app.fill").resizable().scaledToFit().padding(12)
+                                }
+                                .frame(width:52,height:52)
+                                .background(.white.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius:12))
                                 VStack(alignment:.leading,spacing:4) {
                                     Text(app.name).font(.headline)
                                     Text(app.id).font(.caption2).lineLimit(1).foregroundStyle(.secondary)
                                     Text("v\(app.version) · \(app.developer)").font(.caption).foregroundStyle(Theme.cyan)
                                 }
-                                Spacer()
-                                Image(systemName:"chevron.right").foregroundStyle(.secondary)
+                            }.padding(.vertical, 3)
+                        }
+                        .swipeActions(edge:.trailing, allowsFullSwipe:false) {
+                            Button(role:.destructive) { pendingDelete = app } label: {
+                                Label("Delete", systemImage:"trash")
                             }
-                            .padding(14).background(.white.opacity(0.055),in:RoundedRectangle(cornerRadius:17))
-                        }.buttonStyle(.plain)
-                        .contextMenu {
-                            Button(role:.destructive) { pendingDelete = app } label: { Label("Remove listing",systemImage:"trash") }
+                            .disabled(manager.busy)
                         }
                     }
-                    Text("Changes appear after the publishing workflow completes. Refresh ESign to fetch the new catalog.")
-                        .font(.footnote).foregroundStyle(.secondary).padding(.bottom,30)
-                }.padding()
+                }
+                if manager.apps.isEmpty {
+                    Text("No apps in the source. Select Add IPA to import a file from your iPhone.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                Section {
+                    Text("Swipe left to remove an app. Every removal requires confirmation. Publishing to GitHub Actions and Pages can take a little time.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
             }
+            .scrollContentBackground(.hidden)
             .background(Theme.background)
-            .toolbar { ToolbarItem(placement:.topBarTrailing) { Button { Task { await manager.refresh() } } label: { Image(systemName:"arrow.clockwise") } } }
-            .fileImporter(isPresented:$importer,allowedContentTypes:[UTType(filenameExtension:"ipa") ?? .data]) { result in
-                if case .success(let url) = result { Task { await manager.upload(url,sileo:false) } }
-                else if case .failure(let error) = result { manager.status = error.localizedDescription }
+            .navigationTitle("ESign")
+            .toolbar {
+                ToolbarItem(placement:.topBarTrailing) {
+                    Button { Task { await manager.refresh() } } label: { Image(systemName:"arrow.clockwise") }
+                        .disabled(manager.busy)
+                }
             }
-            .alert("Remove listing?",isPresented:Binding(get:{pendingDelete != nil},set:{if !$0 {pendingDelete=nil}})) {
-                Button("Cancel",role:.cancel) {pendingDelete=nil}
-                Button("Remove",role:.destructive) { if let a = pendingDelete { Task { await manager.removeApp(bundle:a.id) } }; pendingDelete=nil }
-            } message: { Text("This removes the app from the source catalog. It does not delete existing GitHub release assets.") }
-            .safeAreaInset(edge:.bottom) { statusView }
+            // ESign IPA files normally have a dynamic UTType. Selecting all Files
+            // items avoids iOS graying out .ipa files in the Files document picker.
+            .fileImporter(isPresented:$importer,
+                          allowedContentTypes:[.item],
+                          allowsMultipleSelection:false) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    manager.importFile(url,sileo:false)
+                case .failure(let error):
+                    manager.alertMessage = error.localizedDescription
+                }
+            }
+            .confirmationDialog("Remove \(pendingDelete?.name ?? "app")?",
+                isPresented:Binding(get:{pendingDelete != nil},set:{if !$0 {pendingDelete=nil}}),
+                titleVisibility:.visible) {
+                    Button("Remove from source", role:.destructive) {
+                        if let app = pendingDelete {
+                            Task { await manager.removeApp(bundle:app.id) }
+                        }
+                        pendingDelete = nil
+                    }
+                    Button("Cancel",role:.cancel) { pendingDelete=nil }
+                } message: {
+                    Text("This removes the app from the ESign source, but keeps its existing GitHub Release files.")
+                }
+            .alert("Source Manager",isPresented:Binding(
+                get:{manager.alertMessage != nil},
+                set:{if !$0 {manager.alertMessage=nil}}
+            )) {
+                Button("OK", role:.cancel) { manager.alertMessage=nil }
+            } message: { Text(manager.alertMessage ?? "") }
+            .safeAreaInset(edge:.bottom) { StatusPanel() }
         }
-    }
-    private var statusView:some View {
-        Group { if !manager.status.isEmpty { Text(manager.status).font(.caption).frame(maxWidth:.infinity).padding(10).background(.regularMaterial) } }
     }
 }
 struct AppEditor:View {
@@ -553,51 +679,95 @@ struct AppEditor:View {
         }
     }
 }
-struct DebsScreen:View {
-    @EnvironmentObject var manager:GitHubManager
+struct DebsScreen: View {
+    @EnvironmentObject var manager: GitHubManager
     @State private var importer = false
-    @State private var pendingDelete:SourceDeb?
-    var body:some View {
+    @State private var pendingDelete: SourceDeb?
+
+    var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment:.leading,spacing:17) {
-                    Header(title:"Sileo Source",subtitle:"Publish and manage jailbreak tweaks")
-                    Panel {
-                        HStack {
-                            Label("Verified Debian packages",systemImage:"checkmark.shield.fill").foregroundStyle(Theme.cyan)
-                            Spacer()
-                            Text("\(manager.debs.count)")
-                        }.font(.footnote)
-                        PrimaryButton(title:"Add DEB",symbol:"plus.circle.fill") { importer = true }
+            List {
+                Section {
+                    SourceHeader(sileo:true)
+                    HStack {
+                        Label("Debian packages",systemImage:"checkmark.shield.fill")
+                        Spacer()
+                        Text("\(manager.debs.count) packages").foregroundStyle(.secondary)
+                    }.font(.caption)
+                    PrimaryButton(title:"Add DEB from Files",symbol:"plus.circle.fill") {
+                        importer = true
                     }
+                    .disabled(manager.busy || !manager.connected)
+                }
+                .listRowBackground(Color.white.opacity(0.055))
+                Section("Published tweaks") {
                     ForEach(manager.debs) { deb in
-                        HStack(spacing:14) {
+                        HStack(spacing:13) {
                             Image(systemName:"shippingbox.fill").font(.title2).foregroundStyle(Theme.cyan)
                             VStack(alignment:.leading,spacing:5) {
                                 Text(deb.filename).font(.headline).lineLimit(2)
-                                Text("Published through the Sileo index").font(.caption).foregroundStyle(.secondary)
+                                Text("Sileo · Debian package").font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button(role:.destructive) { pendingDelete=deb } label: { Image(systemName:"trash").foregroundStyle(.red) }
-                        }.padding(16).background(.white.opacity(0.055),in:RoundedRectangle(cornerRadius:17))
+                        }
+                        .padding(.vertical,7)
+                        .swipeActions(edge:.trailing,allowsFullSwipe:false) {
+                            Button(role:.destructive) { pendingDelete=deb } label: {
+                                Label("Delete",systemImage:"trash")
+                            }
+                            .disabled(manager.busy)
+                        }
                     }
-                    Text("New .deb uploads are hashed and added to package-sources.txt. GitHub Actions rebuilds Packages, Packages.gz, Packages.bz2, and Release.")
+                }
+                if manager.debs.isEmpty {
+                    Text("No tweaks yet. Add a DEB from Files to publish your first package.")
                         .font(.footnote).foregroundStyle(.secondary)
-                }.padding()
+                }
+                Section {
+                    Text("Swipe left to delete. You will always be asked to confirm. The repository package index is rebuilt after each change.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
             }
+            .scrollContentBackground(.hidden)
             .background(Theme.background)
-            .toolbar { ToolbarItem(placement:.topBarTrailing) { Button { Task { await manager.refresh() } } label: { Image(systemName:"arrow.clockwise") } } }
-            .fileImporter(isPresented:$importer,allowedContentTypes:[UTType(filenameExtension:"deb") ?? .data]) { result in
-                if case .success(let url) = result { Task { await manager.upload(url,sileo:true) } }
-                else if case .failure(let error) = result { manager.status = error.localizedDescription }
+            .navigationTitle("Sileo")
+            .toolbar {
+                ToolbarItem(placement:.topBarTrailing) {
+                    Button { Task { await manager.refresh() } } label: { Image(systemName:"arrow.clockwise") }
+                        .disabled(manager.busy)
+                }
             }
-            .alert("Remove package?",isPresented:Binding(get:{pendingDelete != nil},set:{if !$0 {pendingDelete=nil}})) {
-                Button("Cancel",role:.cancel) {pendingDelete=nil}
-                Button("Remove",role:.destructive) { if let d = pendingDelete { Task { await manager.removeDeb(line:d.line) } }; pendingDelete=nil }
-            } message: { Text("The package will disappear after the Sileo index rebuild. The release asset will remain stored on GitHub.") }
-            .safeAreaInset(edge:.bottom) {
-                if !manager.status.isEmpty { Text(manager.status).font(.caption).frame(maxWidth:.infinity).padding(10).background(.regularMaterial) }
+            .fileImporter(isPresented:$importer,
+                          allowedContentTypes:[.item],
+                          allowsMultipleSelection:false) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    manager.importFile(url,sileo:true)
+                case .failure(let error):
+                    manager.alertMessage = error.localizedDescription
+                }
             }
+            .confirmationDialog("Remove \(pendingDelete?.filename ?? "package")?",
+                isPresented:Binding(get:{pendingDelete != nil},set:{if !$0 {pendingDelete=nil}}),
+                titleVisibility:.visible) {
+                    Button("Remove from source",role:.destructive) {
+                        if let deb = pendingDelete {
+                            Task { await manager.removeDeb(line:deb.line) }
+                        }
+                        pendingDelete=nil
+                    }
+                    Button("Cancel",role:.cancel) { pendingDelete=nil }
+                } message: {
+                    Text("Removes this DEB from the Sileo source. GitHub Release assets will be retained.")
+                }
+            .alert("Source Manager",isPresented:Binding(
+                get:{manager.alertMessage != nil},
+                set:{if !$0 {manager.alertMessage=nil}}
+            )) {
+                Button("OK",role:.cancel) { manager.alertMessage=nil }
+            } message: { Text(manager.alertMessage ?? "") }
+            .safeAreaInset(edge:.bottom) { StatusPanel() }
         }
     }
 }
