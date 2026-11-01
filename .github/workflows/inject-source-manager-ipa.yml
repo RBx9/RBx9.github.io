@@ -37,8 +37,10 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/staged"
           gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/staged" \
-            --pattern 'original-ipa.upload' --pattern '*.dylib'
+            --pattern 'original-ipa.upload' --pattern '*.dylib' \
+            --pattern 'publish-name.txt'
           test -s "$RUNNER_TEMP/staged/original-ipa.upload"
+          test -s "$RUNNER_TEMP/staged/publish-name.txt"
           find "$RUNNER_TEMP/staged" -maxdepth 1 -name '*.dylib' -print | grep -q .
       - name: Repackage and verify injected IPA
         env:
@@ -51,7 +53,12 @@ jobs:
             test -s "$file"
             args+=(--library "$file")
           done
-          output="$RUNNER_TEMP/RBx9-Injected-${RELEASE_TAG}.ipa"
+          output_name="$(tr -d '\r\n' < "$RUNNER_TEMP/staged/publish-name.txt")"
+          if [[ ! "$output_name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,96}\.ipa$ ]] || [[ "$output_name" == *..* ]]; then
+            echo "Invalid output IPA filename" >&2
+            exit 1
+          fi
+          output="$RUNNER_TEMP/$output_name"
           python source-manager/scripts/prepare_injected_ipa.py \
             --ipa "$RUNNER_TEMP/staged/original-ipa.upload" \
             "${args[@]}" --output "$output"
