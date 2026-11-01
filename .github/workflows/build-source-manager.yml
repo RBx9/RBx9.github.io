@@ -44,19 +44,19 @@ jobs:
           mkdir -p "$RUNNER_TEMP/Payload"
           cp -R "$app" "$RUNNER_TEMP/Payload/"
           cd "$RUNNER_TEMP"
-          /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9SourceManager-v1.0.0-unsigned.ipa" Payload
-          test -s "$GITHUB_WORKSPACE/RBx9SourceManager-v1.0.0-unsigned.ipa"
+          /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9SourceManager-v1.1.0-unsigned.ipa" Payload
+          test -s "$GITHUB_WORKSPACE/RBx9SourceManager-v1.1.0-unsigned.ipa"
       - name: Publish unsigned IPA in GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="rbx9-source-manager-v1.0.0"
-          asset="RBx9SourceManager-v1.0.0-unsigned.ipa"
+          tag="rbx9-source-manager-v1.1.0"
+          asset="RBx9SourceManager-v1.1.0-unsigned.ipa"
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "$asset" --clobber
           else
             gh release create "$tag" "$asset" --target "$GITHUB_SHA" \
-              --title "RBx9 Source Manager v1.0.0 (Unsigned IPA)" \
-              --notes "ESign, Sileo and Settings tabs. GitHub account authorization, IPA/DEB uploads, source listing management, and independent source icon and metadata editing. Sign the IPA with your own certificate."
+              --title "RBx9 Source Manager v1.1.0 (Unsigned IPA)" \
+              --notes "Move source icon picker into each tab; repair iOS Files importer, swipe-to-delete confirmation, Save Changes, and durable package removal. Sign with your own certificate."
           fi
