@@ -793,6 +793,9 @@ struct PrimaryButton:View {
 @main struct RBx9SourceManagerApp:App {
     @StateObject private var manager = GitHubManager()
     @StateObject private var uploadDraft = IPAUploadDraft()
+    @StateObject private var importCoordinator = IPAImportCoordinator()
+    @StateObject private var vault = RBx9DylibVault.shared
+
     var body:some Scene {
         WindowGroup {
             TabView {
@@ -804,6 +807,21 @@ struct PrimaryButton:View {
             .preferredColorScheme(.dark)
             .environmentObject(manager)
             .environmentObject(uploadDraft)
+            .environmentObject(importCoordinator)
+            // The Files picker belongs to the app's root, never the IPA List
+            // or navigation view. Its delegate cannot recreate/reset the draft.
+            .sheet(item:$importCoordinator.selection,onDismiss:{ vault.refresh() }) { kind in
+                PackageDocumentPicker(
+                    kind:kind == .ipa ? .ipa : .dylib,
+                    multiple:kind != .ipa,
+                    onPick:{ urls in
+                        importCoordinator.receive(urls,kind:kind,
+                            manager:manager,draft:uploadDraft,vault:vault)
+                    },
+                    onCancel:{ importCoordinator.selection=nil }
+                )
+                .id(kind.id)
+            }
         }
     }
 }
@@ -1027,14 +1045,62 @@ final class IPAUploadDraft: ObservableObject {
     }
 }
 
-private enum IPAPicker: String, Identifiable {
+enum IPAPicker: String, Identifiable {
     case ipa, dylib, vaultImport
     var id: String { rawValue }
 }
 
+@MainActor
+final class IPAImportCoordinator: ObservableObject {
+    @Published var selection:IPAPicker?
+
+    func receive(_ urls:[URL],kind:IPAPicker,
+                 manager:GitHubManager,draft:IPAUploadDraft,vault:RBx9DylibVault) {
+        defer { selection=nil }
+        switch kind {
+        case .ipa:
+            guard let url=urls.first,
+                  let staged=manager.stageSelectedFile(url,expected:"ipa") else { return }
+            // Only replacing the IPA is allowed to discard the previous one.
+            if let previous=draft.ipa {
+                manager.discardStagedFiles([previous] + draft.libraries)
+            }
+            draft.selectIPA(staged)
+        case .dylib:
+            // Never touch draft.ipa or its snapshot in this branch.
+            guard draft.ipa != nil else {
+                manager.alertMessage="The IPA is not selected. Choose an IPA before adding dylibs."
+                return
+            }
+            for url in urls {
+                guard draft.libraries.count < 16 else {
+                    manager.alertMessage="You can add up to 16 dylibs."
+                    break
+                }
+                guard let item=manager.stageSelectedFile(url,expected:"dylib") else { continue }
+                if draft.libraries.contains(where:{$0.name.lowercased()==item.name.lowercased()}) {
+                    manager.discardStagedFiles([item])
+                    manager.alertMessage="Duplicate dylib: \(item.name)"
+                    continue
+                }
+                draft.libraries.append(item)
+                do { _ = try vault.save(item.url,originalName:item.name) }
+                catch { /* optional storage must never invalidate IPA selection */ }
+            }
+        case .vaultImport:
+            for url in urls {
+                guard let item=manager.stageSelectedFile(url,expected:"dylib") else { continue }
+                do { _ = try vault.save(item.url,originalName:item.name) }
+                catch { manager.alertMessage=error.localizedDescription }
+                manager.discardStagedFiles([item])
+            }
+        }
+    }
+}
+
 struct AppsScreen: View {
     @EnvironmentObject var manager: GitHubManager
-    @State private var activePicker: IPAPicker?
+    @EnvironmentObject private var importCoordinator: IPAImportCoordinator
     @EnvironmentObject private var draft: IPAUploadDraft
     @StateObject private var vault = RBx9DylibVault.shared
     @State private var renameDylib: SavedDylib?
@@ -1052,7 +1118,7 @@ struct AppsScreen: View {
                     }
                     .font(.caption)
                     PrimaryButton(title:"Select IPA from Files", symbol:"plus.circle.fill") {
-                        activePicker = .ipa
+                        importCoordinator.selection = .ipa
                     }
                     .disabled(manager.busy || !manager.connected)
                     if let ipa = draft.ipa {
@@ -1072,7 +1138,7 @@ struct AppsScreen: View {
                             Text(draft.libraries.isEmpty ? "No dylibs selected. You can upload the original IPA or add libraries first." : "\(draft.libraries.count) selected dylib(s) will be embedded in the IPA.")
                                 .font(.caption).foregroundStyle(.secondary)
                             Button {
-                                activePicker = .dylib
+                                importCoordinator.selection = .dylib
                             } label: {
                                 Label("Add Dylibs from Files",systemImage:"puzzlepiece.extension.fill")
                                     .font(.subheadline.bold()).foregroundStyle(Theme.cyan)
@@ -1115,7 +1181,7 @@ struct AppsScreen: View {
                     HStack {
                         Label("\(vault.items.count) saved dylibs", systemImage:"externaldrive.fill")
                         Spacer()
-                        Button { activePicker = .vaultImport } label: {
+                        Button { importCoordinator.selection = .vaultImport } label: {
                             Label("Import",systemImage:"plus")
                         }.foregroundStyle(Theme.cyan)
                     }
@@ -1214,55 +1280,6 @@ struct AppsScreen: View {
                     Button { Task { await manager.refresh() } } label: { Image(systemName:"arrow.clockwise") }
                         .disabled(manager.busy)
                 }
-            }
-            // One modal host prevents the IPA draft from disappearing when
-            // dismissing the IPA picker and presenting the dylib picker.
-            .sheet(item:$activePicker, onDismiss:{ vault.refresh() }) { kind in
-                PackageDocumentPicker(
-                    kind: kind == .ipa ? .ipa : .dylib,
-                    multiple:kind != .ipa,
-                    onPick: { urls in
-                        switch kind {
-                        case .ipa:
-                            if let url = urls.first {
-                                let newFile = manager.stageSelectedFile(url,expected:"ipa")
-                                if let newFile {
-                                    if let previous = draft.ipa {
-                                        manager.discardStagedFiles([previous] + draft.libraries)
-                                    }
-                                    draft.selectIPA(newFile)
-                                }
-                            }
-                        case .dylib:
-                            for url in urls {
-                                guard draft.libraries.count < 16 else {
-                                    manager.alertMessage = "You can add up to 16 dylibs."
-                                    break
-                                }
-                                guard let item = manager.stageSelectedFile(url,expected:"dylib") else { continue }
-                                if draft.libraries.contains(where:{$0.name.lowercased() == item.name.lowercased()}) {
-                                    manager.discardStagedFiles([item])
-                                    manager.alertMessage = "Duplicate dylib: \(item.name)"
-                                } else {
-                                    draft.libraries.append(item)
-                                    // Keep the original IPA draft untouched.
-                                    do { _ = try vault.save(item.url,originalName:item.name) } catch { /* storage is optional */ }
-                                }
-                            }
-                        case .vaultImport:
-                            for url in urls {
-                                guard let file = manager.stageSelectedFile(url,expected:"dylib") else { continue }
-                                do {
-                                    _ = try vault.save(file.url,originalName:file.name)
-                                } catch { manager.alertMessage = error.localizedDescription }
-                                manager.discardStagedFiles([file])
-                            }
-                        }
-                        activePicker = nil
-                    },
-                    onCancel: { activePicker = nil }
-                )
-                .id(kind.id) // Prevent UIKit picker/coordinator reuse across file types.
             }
             .onAppear { vault.refresh() }
             .alert("Rename dylib",isPresented:Binding(
