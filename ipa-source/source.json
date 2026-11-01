@@ -107,6 +107,15 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.3.9",
+          "buildVersion": "1",
+          "date": "2026-11-01T03:33:48Z",
+          "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.9/RBx9-v1.3.9-unsigned.ipa",
+          "size": 20228783,
+          "minOSVersion": "16.0",
+          "localizedDescription": "RBx9 v1.3.9: rename saved dylibs, export through Share Sheet or Files and import .dylib/.deb with duplicate protection."
+        },
+        {
           "buildVersion": "1",
           "date": "2026-11-01T02:40:00Z",
           "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.8/RBx9-v1.3.8-unsigned.ipa",
@@ -133,11 +142,11 @@
           "version": "1.3.6"
         }
       ],
-      "version": "1.3.8",
-      "versionDate": "2026-11-01T02:40:00Z",
-      "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.8/RBx9-v1.3.8-unsigned.ipa",
-      "size": 20217493,
-      "versionDescription": "RBx9 v1.3.8: persistent duplicate-free Dylib Storage in Settings and Quick Editor, reusable dylibs for IPA updates, IPA/AirDrop opening support, corrected About credit, and ultra-fast startup.",
+      "version": "1.3.9",
+      "versionDate": "2026-11-01T03:33:48Z",
+      "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.9/RBx9-v1.3.9-unsigned.ipa",
+      "size": 20228783,
+      "versionDescription": "RBx9 v1.3.9: rename saved dylibs, export through Share Sheet or Files and import .dylib/.deb with duplicate protection.",
       "minOSVersion": "16.0"
     },
     {
