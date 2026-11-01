@@ -22,6 +22,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Draw bundled RBx9 app icon
+        run: swift source-manager/scripts/create_icon.swift
       - name: Generate Xcode project
         run: |
           cd source-manager
