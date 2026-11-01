@@ -36,6 +36,23 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/SourceManagerBuild" \
             CODE_SIGNING_ALLOWED=NO build
           test -f "$RUNNER_TEMP/SourceManagerBuild/Build/Products/Release-iphoneos/RBx9SourceManager.app/RBx9SourceManager"
+      - name: Package unsigned dev IPA (no release)
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/SourceManagerBuild/Build/Products/Release-iphoneos/RBx9SourceManager.app"
+          test -s "$app/RBx9SourceManager"
+          mkdir -p "$RUNNER_TEMP/package/Payload"
+          cp -R "$app" "$RUNNER_TEMP/package/Payload/"
+          ( cd "$RUNNER_TEMP/package" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9SourceManager-v1.2.0-DEV-unsigned.ipa" Payload )
+          unzip -tq "$GITHUB_WORKSPACE/RBx9SourceManager-v1.2.0-DEV-unsigned.ipa"
+          test -s "$GITHUB_WORKSPACE/RBx9SourceManager-v1.2.0-DEV-unsigned.ipa"
+      - name: Keep IPA as workflow artifact only (no GitHub Release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: RBx9SourceManager-v1.2.0-DEV-unsigned
+          path: RBx9SourceManager-v1.2.0-DEV-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7
   integration-test:
     runs-on: macos-15
     steps:
