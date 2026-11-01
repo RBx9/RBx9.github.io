@@ -1,218 +1,199 @@
 {
-  "com.google.ios.youtube": {
-    "category": "photo-video",
-    "developerName": "RBx9",
-    "iconURL": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/82/43/be/8243be7f-17c3-33ae-720a-ffcde48bed61/logo_youtube_2024_q4_color-0-0-1x_U007emarketing-0-0-0-7-0-0-0-85-220.png/512x512bb.jpg",
-    "localizedDescription": "Available in the RBx9 IPA Library.",
-    "name": "YouTube",
-    "subtitle": "YouTubePlus · sideloadable YouTube",
-    "versions": [
+  "com.google.ios.youtube" : {
+    "category" : "photo-video",
+    "developerName" : "RBx9",
+    "iconURL" : "https:\/\/is1-ssl.mzstatic.com\/image\/thumb\/Purple211\/v4\/82\/43\/be\/8243be7f-17c3-33ae-720a-ffcde48bed61\/logo_youtube_2024_q4_color-0-0-1x_U007emarketing-0-0-0-7-0-0-0-85-220.png\/512x512bb.jpg",
+    "localizedDescription" : "Available in the RBx9 IPA Library.",
+    "name" : "YouTube",
+    "subtitle" : "YouTubePlus · sideloadable YouTube",
+    "versions" : [
       {
-        "buildVersion": "21.42.4",
-        "date": "2026-10-22T08:38:16Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/Youtube_6.02b/YouTubePlus_21.42.4_6.0b2.ipa",
-        "minOSVersion": "17.0",
-        "size": 149834006,
-        "version": "21.42.4"
+        "buildVersion" : "21.42.4",
+        "date" : "2026-10-22T08:38:16Z",
+        "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/Youtube_6.02b\/YouTubePlus_21.42.4_6.0b2.ipa",
+        "minOSVersion" : "17.0",
+        "size" : 149834006,
+        "version" : "21.42.4"
       }
     ]
   },
-  "com.hasanaydins.muvy": {
-    "category": "utilities",
-    "developerName": "RBx9",
-    "iconURL": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/44/57/45/4457458d-52ca-9807-ba28-1e2fe096db82/app-0-0-1x_U007epad-0-1-85-220.png/512x512bb.jpg",
-    "localizedDescription": "Available in the RBx9 IPA Library.",
-    "name": "Muv",
-    "subtitle": "Download and sideload this iOS app",
-    "versions": [
+  "com.hasanaydins.muvy" : {
+    "category" : "utilities",
+    "developerName" : "RBx9",
+    "iconURL" : "https:\/\/is1-ssl.mzstatic.com\/image\/thumb\/Purple221\/v4\/44\/57\/45\/4457458d-52ca-9807-ba28-1e2fe096db82\/app-0-0-1x_U007epad-0-1-85-220.png\/512x512bb.jpg",
+    "localizedDescription" : "Available in the RBx9 IPA Library.",
+    "name" : "Muv",
+    "subtitle" : "Download and sideload this iOS app",
+    "versions" : [
       {
-        "buildVersion": "42",
-        "date": "2026-10-30T22:18:45Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/muvy_1.2.6/Muvy-1.2.6.ipa",
-        "minOSVersion": "10.0",
-        "size": 41082481,
-        "version": "1.2.6"
+        "buildVersion" : "42",
+        "date" : "2026-10-30T22:18:45Z",
+        "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/muvy_1.2.6\/Muvy-1.2.6.ipa",
+        "minOSVersion" : "10.0",
+        "size" : 41082481,
+        "version" : "1.2.6"
       }
     ]
   },
-  "com.rbx9.pdf": {
-    "category": "productivity",
-    "developerName": "RBx9",
-    "iconURL": "https://rbx9.github.io/pdf/icon-512.png",
-    "localizedDescription": "Merge, split, organize, compress, rotate, scan, convert, number, watermark, password-protect, unlock and OCR PDFs. Everything runs on your device, so files are never uploaded. Also available on the web at https://rbx9.github.io/pdf/",
-    "name": "RBx9 PDF",
-    "subtitle": "Private PDF tools that run on your iPhone",
-    "tintColor": "#3D63E0",
-    "versions": [
+  "com.rbx9.pdf" : {
+    "category" : "productivity",
+    "developerName" : "RBx9",
+    "iconURL" : "https:\/\/rbx9.github.io\/pdf\/icon-512.png",
+    "localizedDescription" : "Merge, split, organize, compress, rotate, scan, convert, number, watermark, password-protect, unlock and OCR PDFs. Everything runs on your device, so files are never uploaded. Also available on the web at https:\/\/rbx9.github.io\/pdf\/",
+    "name" : "RBx9 PDF",
+    "subtitle" : "Private PDF tools that run on your iPhone",
+    "tintColor" : "#3D63E0",
+    "versions" : [
       {
-        "buildVersion": "5",
-        "date": "2026-10-30T21:46:27Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-pdf-v1.4.0/RBx9PDF.ipa",
-        "localizedDescription": "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR.",
-        "minOSVersion": "16.0",
-        "size": 2495482,
-        "version": "1.4.0"
+        "buildVersion" : "5",
+        "date" : "2026-10-30T21:46:27Z",
+        "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-pdf-v1.4.0\/RBx9PDF.ipa",
+        "localizedDescription" : "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR.",
+        "minOSVersion" : "16.0",
+        "size" : 2495482,
+        "version" : "1.4.0"
       },
       {
-        "buildVersion": "4",
-        "date": "2026-10-30T21:23:31Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-pdf-v1.3.0/RBx9PDF.ipa",
-        "localizedDescription": "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR.",
-        "minOSVersion": "16.0",
-        "size": 2496119,
-        "version": "1.3.0"
+        "buildVersion" : "4",
+        "date" : "2026-10-30T21:23:31Z",
+        "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-pdf-v1.3.0\/RBx9PDF.ipa",
+        "localizedDescription" : "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR.",
+        "minOSVersion" : "16.0",
+        "size" : 2496119,
+        "version" : "1.3.0"
       },
       {
-        "buildVersion": "3",
-        "date": "2026-10-30T20:53:53Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-pdf-v1.2.0/RBx9PDF.ipa",
-        "localizedDescription": "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR.",
-        "minOSVersion": "16.0",
-        "size": 1552744,
-        "version": "1.2.0"
+        "buildVersion" : "3",
+        "date" : "2026-10-30T20:53:53Z",
+        "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-pdf-v1.2.0\/RBx9PDF.ipa",
+        "localizedDescription" : "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR.",
+        "minOSVersion" : "16.0",
+        "size" : 1552744,
+        "version" : "1.2.0"
       },
       {
-        "buildVersion": "2",
-        "date": "2026-10-30T10:29:19Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-pdf-v1.1.0/RBx9PDF.ipa",
-        "localizedDescription": "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR.",
-        "minOSVersion": "16.0",
-        "size": 1520955,
-        "version": "1.1.0"
+        "buildVersion" : "2",
+        "date" : "2026-10-30T10:29:19Z",
+        "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-pdf-v1.1.0\/RBx9PDF.ipa",
+        "localizedDescription" : "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR.",
+        "minOSVersion" : "16.0",
+        "size" : 1520955,
+        "version" : "1.1.0"
       },
       {
-        "buildVersion": "1",
-        "date": "2026-10-30T10:06:44Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-pdf-v1.0.0/RBx9PDF.ipa",
-        "localizedDescription": "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR.",
-        "minOSVersion": "16.0",
-        "size": 803820,
-        "version": "1.0.0"
+        "buildVersion" : "1",
+        "date" : "2026-10-30T10:06:44Z",
+        "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-pdf-v1.0.0\/RBx9PDF.ipa",
+        "localizedDescription" : "On-device PDF toolkit: merge, split, organize, compress, scan, convert, number, watermark, protect, unlock and OCR.",
+        "minOSVersion" : "16.0",
+        "size" : 803820,
+        "version" : "1.0.0"
       }
     ]
   },
-  "com.rbx9.signer": {
-    "category": "utilities",
-    "developerName": "RBx9",
-    "iconURL": "https://rbx9.github.io/icon.png",
-    "localizedDescription": "RBx9 Signer for iOS 16+. Import IPAs, save .dylib and .deb tweaks in persistent duplicate-free storage, reuse saved tweaks in the Quick Editor for app updates, re-sign and install modified IPAs, and open IPA files through supported iOS file-sharing flows. Based on Feather under GPL-3.0. Sign this unsigned IPA with your own certificate.",
-    "name": "RBx9 Signer",
-    "subtitle": "IPA signer, installer and dylib tweak editor",
-    "tintColor": "#2DE2CF",
-    "versions": [
+  "com.rbx9.signer" : {
+    "category" : "utilities",
+    "developerName" : "RBx9",
+    "iconURL" : "https:\/\/rbx9.github.io\/icon.png",
+    "localizedDescription" : "RBx9 Signer for iOS 16+. Import IPAs, save .dylib and .deb tweaks in persistent duplicate-free storage, reuse saved tweaks in the Quick Editor for app updates, re-sign and install modified IPAs, and open IPA files through supported iOS file-sharing flows. Based on Feather under GPL-3.0. Sign this unsigned IPA with your own certificate.",
+    "name" : "RBx9 Signer",
+    "subtitle" : "IPA signer, installer and dylib tweak editor",
+    "tintColor" : "#2DE2CF",
+    "versions" : [
       {
-        "buildVersion": "1",
-        "date": "2026-11-01T02:40:00Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.8/RBx9-v1.3.8-unsigned.ipa",
-        "localizedDescription": "RBx9 v1.3.8: persistent duplicate-free Dylib Storage in Settings and Quick Editor, reusable dylibs for IPA updates, IPA/AirDrop opening support, corrected About credit, and ultra-fast startup.",
-        "minOSVersion": "16.0",
-        "size": 20217493,
-        "version": "1.3.8"
+        "buildVersion" : "1",
+        "date" : "2026-11-01T02:40:00Z",
+        "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-signer-v1.3.8\/RBx9-v1.3.8-unsigned.ipa",
+        "localizedDescription" : "RBx9 v1.3.8: persistent duplicate-free Dylib Storage in Settings and Quick Editor, reusable dylibs for IPA updates, IPA\/AirDrop opening support, corrected About credit, and ultra-fast startup.",
+        "minOSVersion" : "16.0",
+        "size" : 20217493,
+        "version" : "1.3.8"
       },
       {
-        "buildVersion": "1",
-        "date": "2026-11-01T02:09:14Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.7/RBx9-v1.3.7-unsigned.ipa",
-        "localizedDescription": "RBx9 v1.3.7: native transmission-style startup animation with Reduce Motion support.",
-        "minOSVersion": "16.0",
-        "size": 20185689,
-        "version": "1.3.7"
+        "buildVersion" : "1",
+        "date" : "2026-11-01T02:09:14Z",
+        "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-signer-v1.3.7\/RBx9-v1.3.7-unsigned.ipa",
+        "localizedDescription" : "RBx9 v1.3.7: native transmission-style startup animation with Reduce Motion support.",
+        "minOSVersion" : "16.0",
+        "size" : 20185689,
+        "version" : "1.3.7"
       },
       {
-        "date": "2026-10-31T23:13:14Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.6/RBx9-v1.3.6-unsigned.ipa",
-        "localizedDescription": "RBx9 Signer v1.3.6: tweak-editor injection labels and progress, improved import from Files, and IPA re-signing with optional installation.",
-        "minOSVersion": "16.0",
-        "size": 19640178,
-        "version": "1.3.6"
+        "date" : "2026-10-31T23:13:14Z",
+        "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-signer-v1.3.6\/RBx9-v1.3.6-unsigned.ipa",
+        "localizedDescription" : "RBx9 Signer v1.3.6: tweak-editor injection labels and progress, improved import from Files, and IPA re-signing with optional installation.",
+        "minOSVersion" : "16.0",
+        "size" : 19640178,
+        "version" : "1.3.6"
       }
     ]
   },
-  "com.stremio.pal": {
-    "name": "Stremio",
-    "developerName": "Stremio",
-    "subtitle": "iPhone & iPad · latest iOS/iPadOS release",
-    "localizedDescription": "Stremio for iOS and iPadOS. The IPA downloads directly from Stremio's CDN; metadata is synced from the unofficial gorlev/stremio-altstore source.",
-    "iconURL": "https://www.stremio.com/website/stremio-logo-small.png",
-    "tintColor": "#7055D9",
-    "category": "entertainment",
-    "versions": [
-      {
-        "version": "2.1.1",
-        "buildVersion": "25",
-        "date": "2026-10-31",
-        "downloadURL": "https://dl.strem.io/apple/2.1.1b25/ios/stremio_iOS.ipa",
-        "size": 84752072,
-        "minOSVersion": "15.0",
-        "sha256": "1182428e8ba369e7f048fa1651b374a49ff6801e8f35350d0f95d78a41a067d6",
-        "localizedDescription": "Stremio 2.1.1 (build 25)."
-      }
-    ],
-    "screenshots": {
-      "iphone": [
-        "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/6a/ee/19/6aee194d-7b33-aaab-b3bf-64b9773e6120/login.png/1242x2688ss.jpg",
-        "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/8a/9d/46/8a9d46c5-68f5-4396-7e97-a0fdc2e4c99b/7A634238-A47C-4B30-9373-0EDCE5E01D8C.png/1242x2688ss.jpg",
-        "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/e0/3b/96/e03b96c3-e1a5-ad13-b45a-a267cf9860a5/D1DC7867-6EE9-4837-919E-81902FC3344F.png/1242x2688ss.jpg",
-        "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/9d/ec/de/9decdee5-5e8c-4ac8-f213-6cd259ce7eeb/5EA57C1E-F7EC-4C2D-AC9A-771814B51ED4.png/1242x2688ss.jpg"
-      ],
-      "ipad": [
+  "com.stremio.pal" : {
+    "category" : "entertainment",
+    "developerName" : "Stremio",
+    "iconURL" : "https:\/\/www.stremio.com\/website\/stremio-logo-small.png",
+    "localizedDescription" : "Stremio for iOS and iPadOS. The IPA downloads directly from Stremio's CDN; metadata is synced from the unofficial gorlev\/stremio-altstore source.",
+    "name" : "Stremio",
+    "screenshots" : {
+      "ipad" : [
         {
-          "imageURL": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/71/54/b9/7154b96c-b3e1-148b-0711-b5c26c6dc280/login-ipad.png/2048x2732ss.jpg",
-          "width": 2048,
-          "height": 2732
+          "height" : 2732,
+          "imageURL" : "https:\/\/is1-ssl.mzstatic.com\/image\/thumb\/PurpleSource221\/v4\/71\/54\/b9\/7154b96c-b3e1-148b-0711-b5c26c6dc280\/login-ipad.png\/2048x2732ss.jpg",
+          "width" : 2048
         },
         {
-          "imageURL": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/7d/ae/9c/7dae9cc9-d812-92df-46a3-301fc6b6ce1a/9B597930-50BE-4D8E-AEEC-EEF762C1E768.png/2048x2732ss.jpg",
-          "width": 2048,
-          "height": 2732
+          "height" : 2732,
+          "imageURL" : "https:\/\/is1-ssl.mzstatic.com\/image\/thumb\/PurpleSource211\/v4\/7d\/ae\/9c\/7dae9cc9-d812-92df-46a3-301fc6b6ce1a\/9B597930-50BE-4D8E-AEEC-EEF762C1E768.png\/2048x2732ss.jpg",
+          "width" : 2048
         },
         {
-          "imageURL": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/76/0d/24/760d2486-cdb1-5935-3d98-f21e695d7151/9A77F888-EADE-4EEB-9549-EDDA02E1BEE3.png/2048x2732ss.jpg",
-          "width": 2048,
-          "height": 2732
+          "height" : 2732,
+          "imageURL" : "https:\/\/is1-ssl.mzstatic.com\/image\/thumb\/PurpleSource211\/v4\/76\/0d\/24\/760d2486-cdb1-5935-3d98-f21e695d7151\/9A77F888-EADE-4EEB-9549-EDDA02E1BEE3.png\/2048x2732ss.jpg",
+          "width" : 2048
         },
         {
-          "imageURL": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/40/2b/cd/402bcd56-0df9-17c3-508b-b19540d6205e/D452C7D4-67E6-4AFF-BA25-3DF914C326DA.png/2048x2732ss.jpg",
-          "width": 2048,
-          "height": 2732
+          "height" : 2732,
+          "imageURL" : "https:\/\/is1-ssl.mzstatic.com\/image\/thumb\/PurpleSource221\/v4\/40\/2b\/cd\/402bcd56-0df9-17c3-508b-b19540d6205e\/D452C7D4-67E6-4AFF-BA25-3DF914C326DA.png\/2048x2732ss.jpg",
+          "width" : 2048
         }
+      ],
+      "iphone" : [
+        "https:\/\/is1-ssl.mzstatic.com\/image\/thumb\/PurpleSource221\/v4\/6a\/ee\/19\/6aee194d-7b33-aaab-b3bf-64b9773e6120\/login.png\/1242x2688ss.jpg",
+        "https:\/\/is1-ssl.mzstatic.com\/image\/thumb\/PurpleSource221\/v4\/8a\/9d\/46\/8a9d46c5-68f5-4396-7e97-a0fdc2e4c99b\/7A634238-A47C-4B30-9373-0EDCE5E01D8C.png\/1242x2688ss.jpg",
+        "https:\/\/is1-ssl.mzstatic.com\/image\/thumb\/PurpleSource211\/v4\/e0\/3b\/96\/e03b96c3-e1a5-ad13-b45a-a267cf9860a5\/D1DC7867-6EE9-4837-919E-81902FC3344F.png\/1242x2688ss.jpg",
+        "https:\/\/is1-ssl.mzstatic.com\/image\/thumb\/PurpleSource211\/v4\/9d\/ec\/de\/9decdee5-5e8c-4ac8-f213-6cd259ce7eeb\/5EA57C1E-F7EC-4C2D-AC9A-771814B51ED4.png\/1242x2688ss.jpg"
       ]
-    }
-  },
-  "com.xapps.lines.ios9": {
-    "category": "utilities",
-    "developerName": "RBx9",
-    "iconURL": "https://rbx9.github.io/icon.png",
-    "localizedDescription": "Available in the RBx9 IPA Library.",
-    "name": "Reda Line",
-    "subtitle": "Download and sideload this iOS app",
-    "versions": [
+    },
+    "subtitle" : "iPhone & iPad · latest iOS\/iPadOS release",
+    "tintColor" : "#7055D9",
+    "versions" : [
       {
-        "buildVersion": "3",
-        "date": "2026-10-26T07:45:32Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/Lines_4.6/Stable.lines.ipa",
-        "minOSVersion": "13.0",
-        "size": 17501929,
-        "version": "4.6"
+        "buildVersion" : "25",
+        "date" : "2026-10-31",
+        "downloadURL" : "https:\/\/dl.strem.io\/apple\/2.1.1b25\/ios\/stremio_iOS.ipa",
+        "localizedDescription" : "Stremio 2.1.1 (build 25).",
+        "minOSVersion" : "15.0",
+        "sha256" : "1182428e8ba369e7f048fa1651b374a49ff6801e8f35350d0f95d78a41a067d6",
+        "size" : 84752072,
+        "version" : "2.1.1"
       }
     ]
   },
-  "app.routerpulse.ios": {
-    "name": "RouterPulse",
-    "developerName": "RBx9",
-    "subtitle": "Download and sideload this iOS app",
-    "localizedDescription": "Available in the RBx9 IPA Library.",
-    "iconURL": "https://rbx9.github.io/icon.png",
-    "category": "utilities",
-    "versions": [
+  "com.xapps.lines.ios9" : {
+    "category" : "utilities",
+    "developerName" : "RBx9",
+    "iconURL" : "https:\/\/rbx9.github.io\/icon.png",
+    "localizedDescription" : "Available in the RBx9 IPA Library.",
+    "name" : "Reda Line",
+    "subtitle" : "Download and sideload this iOS app",
+    "versions" : [
       {
-        "version": "1.0.1",
-        "buildVersion": "2",
-        "date": "2026-11-01T03:14:55Z",
-        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/source-manager-1793502892-DAF597FE/RouterPulse-Fixed-v1.0.1.ipa",
-        "size": 383572,
-        "minOSVersion": "17.0",
-        "localizedDescription": "Uploaded using RBx9 Source Manager"
+        "buildVersion" : "3",
+        "date" : "2026-10-26T07:45:32Z",
+        "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/Lines_4.6\/Stable.lines.ipa",
+        "minOSVersion" : "13.0",
+        "size" : 17501929,
+        "version" : "4.6"
       }
     ]
   }
