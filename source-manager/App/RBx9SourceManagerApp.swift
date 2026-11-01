@@ -663,7 +663,8 @@ struct StatusPanel: View {
 /// SwiftUI's generic .item fileImporter filter; the UIKit import-copy picker
 /// uses explicitly registered extensions plus broad document data types.
 struct PackageDocumentPicker: UIViewControllerRepresentable {
-    let onPick: (URL) -> Void
+    let multiple: Bool
+    let onPick: ([URL]) -> Void
     let onCancel: () -> Void
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
@@ -674,7 +675,7 @@ struct PackageDocumentPicker: UIViewControllerRepresentable {
             asCopy: true
         )
         picker.delegate = context.coordinator
-        picker.allowsMultipleSelection = false
+        picker.allowsMultipleSelection = multiple
         picker.shouldShowFileExtensions = true
         return picker
     }
@@ -686,17 +687,15 @@ struct PackageDocumentPicker: UIViewControllerRepresentable {
     }
 
     final class Coordinator: NSObject, UIDocumentPickerDelegate {
-        let onPick: (URL) -> Void
+        let onPick: ([URL]) -> Void
         let onCancel: () -> Void
-        init(onPick: @escaping (URL) -> Void, onCancel: @escaping () -> Void) {
+        init(onPick: @escaping ([URL]) -> Void, onCancel: @escaping () -> Void) {
             self.onPick = onPick
             self.onCancel = onCancel
         }
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            guard let selected = urls.first else { onCancel(); return }
-            // The picker creates an app-accessible copy, but it may be removed
-            // when the picker dismisses. Stage it before dismissing.
-            onPick(selected)
+            guard !urls.isEmpty else { onCancel(); return }
+            onPick(urls)
         }
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
             onCancel()
@@ -707,6 +706,9 @@ struct PackageDocumentPicker: UIViewControllerRepresentable {
 struct AppsScreen: View {
     @EnvironmentObject var manager: GitHubManager
     @State private var importer = false
+    @State private var libraryImporter = false
+    @State private var stagedIPA: StagedSourceFile?
+    @State private var stagedLibraries: [StagedSourceFile] = []
     @State private var pendingDelete: SourceApp?
 
     var body: some View {
@@ -720,10 +722,54 @@ struct AppsScreen: View {
                         Text("\(manager.apps.count) apps").foregroundStyle(.secondary)
                     }
                     .font(.caption)
-                    PrimaryButton(title:"Add IPA from Files", symbol:"plus.circle.fill") {
+                    PrimaryButton(title:"Select IPA from Files", symbol:"plus.circle.fill") {
                         importer = true
                     }
                     .disabled(manager.busy || !manager.connected)
+                    if let ipa = stagedIPA {
+                        VStack(alignment:.leading,spacing:12) {
+                            Label(ipa.name,systemImage:"doc.zipper")
+                                .font(.headline)
+                                .lineLimit(2)
+                            Text(stagedLibraries.isEmpty ? "No dylibs selected. You can upload the original IPA or add libraries first." : "\(stagedLibraries.count) selected dylib(s) will be embedded in the IPA.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Button {
+                                libraryImporter = true
+                            } label: {
+                                Label("Add Dylibs from Files",systemImage:"puzzlepiece.extension.fill")
+                                    .font(.subheadline.bold()).foregroundStyle(Theme.cyan)
+                            }
+                            .disabled(manager.busy)
+                            ForEach(stagedLibraries) { item in
+                                HStack {
+                                    Image(systemName:"puzzlepiece.fill").foregroundStyle(Theme.cyan)
+                                    Text(item.name).font(.caption).lineLimit(1)
+                                    Spacer()
+                                    Button(role:.destructive) {
+                                        manager.discardStagedFiles([item])
+                                        stagedLibraries.removeAll { $0.id == item.id }
+                                    } label: { Image(systemName:"xmark.circle.fill") }
+                                }
+                            }
+                            PrimaryButton(
+                                title:stagedLibraries.isEmpty ? "Publish Original IPA" : "Inject Dylibs & Publish",
+                                symbol:"arrow.up.doc.fill"
+                            ) {
+                                guard let ipa = stagedIPA else { return }
+                                manager.publishSelectedIPA(ipa,libraries:stagedLibraries)
+                                stagedIPA = nil
+                                stagedLibraries = []
+                            }
+                            .disabled(manager.busy || !manager.connected)
+                            Button("Cancel selection",role:.cancel) {
+                                if let ipa = stagedIPA {
+                                    manager.discardStagedFiles([ipa] + stagedLibraries)
+                                }
+                                stagedIPA = nil
+                                stagedLibraries = []
+                            }.font(.caption)
+                        }
+                    }
                 }
                 .listRowBackground(Color.white.opacity(0.055))
                 Section("Published applications") {
@@ -777,11 +823,41 @@ struct AppsScreen: View {
             // items avoids iOS graying out .ipa files in the Files document picker.
             .sheet(isPresented:$importer) {
                 PackageDocumentPicker(
-                    onPick: { url in
-                        manager.importFile(url,sileo:false)
+                    multiple:false,
+                    onPick: { urls in
+                        guard let url = urls.first else { importer = false; return }
+                        if let previous = stagedIPA {
+                            manager.discardStagedFiles([previous] + stagedLibraries)
+                            stagedLibraries = []
+                        }
+                        stagedIPA = manager.stageSelectedFile(url,expected:"ipa")
                         importer = false
                     },
                     onCancel: { importer = false }
+                )
+            }
+            .sheet(isPresented:$libraryImporter) {
+                PackageDocumentPicker(
+                    multiple:true,
+                    onPick: { urls in
+                        for url in urls {
+                            guard stagedLibraries.count < 16 else {
+                                manager.alertMessage = "You can add up to 16 dylibs."
+                                break
+                            }
+                            guard let staged = manager.stageSelectedFile(url,expected:"dylib") else {
+                                continue
+                            }
+                            if stagedLibraries.contains(where: { $0.name.lowercased() == staged.name.lowercased() }) {
+                                manager.discardStagedFiles([staged])
+                                manager.alertMessage = "Duplicate dylib: \(staged.name)"
+                            } else {
+                                stagedLibraries.append(staged)
+                            }
+                        }
+                        libraryImporter = false
+                    },
+                    onCancel: { libraryImporter = false }
                 )
             }
             .confirmationDialog("Remove \(pendingDelete?.name ?? "app")?",
@@ -925,8 +1001,9 @@ struct DebsScreen: View {
             }
             .sheet(isPresented:$importer) {
                 PackageDocumentPicker(
-                    onPick: { url in
-                        manager.importFile(url,sileo:true)
+                    multiple:false,
+                    onPick: { urls in
+                        if let url = urls.first { manager.importFile(url,sileo:true) }
                         importer = false
                     },
                     onCancel: { importer = false }
