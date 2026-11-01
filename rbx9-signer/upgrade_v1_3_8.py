@@ -22,10 +22,10 @@ s = p.read_text()
 if "import NimbleViews\n" not in s:
     raise RuntimeError("Missing Quick Editor imports")
 s = s.replace("import NimbleViews\n", "import NimbleViews\nimport CryptoKit\n", 1)
-s = s.replace("@State private var _isAddingPresenting = false", """@State private var _isAddingPresenting = false
+s = s.replace("@State private var _isAddingPresenting = false", '''@State private var _isAddingPresenting = false
     @StateObject private var _rbx9Vault = RBx9DylibStorage.shared
     @State private var _rbx9ShowStorageNotice = false
-    @State private var _rbx9StorageNotice = """""", 1)
+    @State private var _rbx9StorageNotice = ""''', 1)
 
 # Append the stored library as a distinct section INSIDE the quick editor NBList.
 anchor = ".safeAreaInset(edge: .bottom, spacing: 0)"
@@ -404,6 +404,30 @@ ts = ts[:location] + '''if RBx9DylibStorage.isStored(url) {
             try _fileManager.moveFileIfNeeded(from: url, to: destinationURL)
         }''' + ts[location + len(anchor):]
 tweak.write_text(ts)
+
+# Faster launch: retain the branded pulse but never hold navigation hostage.
+launch = app / "FeatherApp.swift"
+launch_code = launch.read_text()
+for old, new in [
+    ("rbx9ReduceMotion ? 450_000_000 : 2_350_000_000",
+     "rbx9ReduceMotion ? 50_000_000 : 230_000_000"),
+    ("rbx9ReduceMotion ? 0.12 : 0.42",
+     "rbx9ReduceMotion ? 0.04 : 0.10"),
+    (".spring(response: 0.72, dampingFraction: 0.82)",
+     ".easeOut(duration: 0.13)"),
+    ("Task.sleep(nanoseconds: 300_000_000)",
+     "Task.sleep(nanoseconds: 70_000_000)"),
+    (".easeInOut(duration: 1.18)",
+     ".easeInOut(duration: 0.16)"),
+    ("Task.sleep(nanoseconds: 1_100_000_000)",
+     "Task.sleep(nanoseconds: 95_000_000)"),
+    (".easeOut(duration: 0.33)",
+     ".easeOut(duration: 0.08)")
+]:
+    if launch_code.count(old) != 1:
+        raise RuntimeError("Startup speed anchor missing: " + old)
+    launch_code = launch_code.replace(old, new, 1)
+launch.write_text(launch_code)
 
 # Apple supports owner document declarations, but iOS does NOT offer an
 # IPA system-wide default-app switch. Register our own UTI identity for both
