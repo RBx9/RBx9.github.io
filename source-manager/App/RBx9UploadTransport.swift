@@ -110,3 +110,30 @@ enum RBx9PendingUploadStore {
     }
     static func clear() { try? FileManager.default.removeItem(at:record) }
 }
+
+
+struct RBx9PendingDylib: Codable {
+    var path:String
+    var name:String
+}
+struct RBx9PendingInjection: Codable {
+    var ipaPath:String
+    var ipaName:String
+    var outputName:String
+    var libraries:[RBx9PendingDylib]
+    var tag:String
+    var releaseID:Int?
+}
+enum RBx9PendingInjectionStore {
+    private static var file:URL {
+        RBx9PendingUploadStore.directory.appendingPathComponent("pending-injection.json")
+    }
+    static func load() -> RBx9PendingInjection? {
+        guard let data=try? Data(contentsOf:file) else { return nil }
+        return try? JSONDecoder().decode(RBx9PendingInjection.self,from:data)
+    }
+    static func save(_ value:RBx9PendingInjection) throws {
+        try JSONEncoder().encode(value).write(to:file,options:.atomic)
+    }
+    static func clear() { try? FileManager.default.removeItem(at:file) }
+}
