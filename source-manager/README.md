@@ -17,3 +17,15 @@ Alternatively, in Settings, paste a **fine-grained personal access token** with 
 Workflow `build-source-manager.yml` builds an unsigned IPA on GitHub Actions macOS. Sign the downloaded IPA with ESign/RBx9 Signer and your certificate before installing.
 
 The app doesn't change source files until you authorize it and perform an action. Removing a catalog listing doesn't delete GitHub Release binary assets.
+
+
+## IPA dylib injection (v1.2.0)
+
+The ESign tab now includes a staged IPA editor:
+1. Select an IPA from iPhone Files.
+2. Optionally select multiple .dylib files from Files, remove duplicates, and review the selection.
+3. Choose **Inject Dylibs & Publish** to upload the IPA as a draft-release input (not a .ipa catalog entry), then publish a release that triggers `inject-source-manager-ipa.yml`.
+4. The workflow packages the selected dylibs into the app's Frameworks directory and modifies the main Mach-O executable's load commands, checks the output and uploads only the validated injected IPA asset.
+5. Once verified, GitHub dispatches the existing `build-ipa-source.yml` to add the injected IPA to the ESign catalog.
+
+The output is **unsigned** and must be signed using a compatible provisioning profile / signing certificate by each person installing it. The repository does not automatically sign apps for downloaders. Some IPAs are encrypted or have unusual bundle layouts and cannot be safely modified; in these cases the workflow fails without publishing a modified app. Use this feature only for apps you own or are authorized to redistribute and modify.
