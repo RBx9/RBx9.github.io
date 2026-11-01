@@ -14,6 +14,7 @@ BASE = Path(__file__).resolve().parent.parent
 CATALOG = BASE / "catalog.json"
 ROOT = "https://rbx9.github.io/ipa-source"
 ICON = "https://rbx9.github.io/icon.png"
+SOURCE_SETTINGS = BASE / "source-settings.json"
 
 def load():
     if not CATALOG.exists():
@@ -191,11 +192,12 @@ def render():
             "versionDescription": latest.get("localizedDescription", ""),
             **({"minOSVersion": latest["minOSVersion"]} if latest.get("minOSVersion") else {})
         })
+    settings = json.loads(SOURCE_SETTINGS.read_text(encoding="utf-8")) if SOURCE_SETTINGS.exists() else {}
     common = {
-        "name": "RBx9 IPA Library", "identifier": "com.rbx9.ipa.library",
-        "subtitle": "iOS applications for Feather and ESign",
-        "description": "Browse IPAs from RBx9. Requires your own compatible signing method.",
-        "iconURL": ICON, "website": ROOT + "/"
+        "name": settings.get("name", "RBx9 IPA Library"), "identifier": "com.rbx9.ipa.library",
+        "subtitle": settings.get("subtitle", "iOS applications for Feather and ESign"),
+        "description": settings.get("description", "Browse IPAs from RBx9. Requires your own compatible signing method."),
+        "iconURL": settings.get("iconURL", ICON), "website": ROOT + "/"
     }
     # One AltStore-compatible source for Feather and ESign.
     unified_source = {
