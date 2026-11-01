@@ -21,6 +21,13 @@
         <dict><key>public.filename-extension</key><array><string>ipa</string></array></dict>
     </dict>
     <dict>
+        <key>UTTypeIdentifier</key><string>com.rbx9.source-manager.dylib</string>
+        <key>UTTypeDescription</key><string>iOS Dynamic Library</string>
+        <key>UTTypeConformsTo</key><array><string>public.data</string></array>
+        <key>UTTypeTagSpecification</key>
+        <dict><key>public.filename-extension</key><array><string>dylib</string></array></dict>
+    </dict>
+    <dict>
         <key>UTTypeIdentifier</key><string>com.rbx9.source-manager.deb</string>
         <key>UTTypeDescription</key><string>Debian Software Package (DEB)</string>
         <key>UTTypeConformsTo</key><array><string>public.data</string></array>
