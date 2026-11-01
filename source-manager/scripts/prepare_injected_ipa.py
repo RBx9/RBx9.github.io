@@ -45,15 +45,17 @@ def main():
         binaries = [main_macho.at(i) for i in range(main_macho.size)]
         frameworks = app / "Frameworks"
         frameworks.mkdir(exist_ok=True)
-        names = set()
+        names = []
+        names_lower = set()
         for library in a.library:
             source = Path(library)
             name = source.name
             if not re.fullmatch(r"[A-Za-z0-9._+-]+\.dylib", name, re.I):
                 raise ValueError("Invalid library name")
-            if name.lower() in names:
+            if name.lower() in names_lower:
                 raise ValueError("Duplicate library")
-            names.add(name.lower())
+            names.append(name)
+            names_lower.add(name.lower())
             if not lief.MachO.parse(source):
                 raise ValueError("Library is not a Mach-O dylib")
             target = frameworks / name
