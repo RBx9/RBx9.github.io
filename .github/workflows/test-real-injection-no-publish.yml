@@ -36,3 +36,14 @@ jobs:
           python source-manager/scripts/prepare_injected_ipa.py --ipa "$RUNNER_TEMP/input/original-ipa.upload" --library "$RUNNER_TEMP/input/RBx9Tok.dylib" --output "$RUNNER_TEMP/test-output.ipa"
           unzip -tq "$RUNNER_TEMP/test-output.ipa"
           test -s "$RUNNER_TEMP/test-output.ipa"
+      - name: Validate that finished IPA can enter ESign catalog (no push)
+        run: |
+          set -euo pipefail
+          printf '%s\n' 'Test-only injected IPA publication' > "$RUNNER_TEMP/test-notes.txt"
+          python ipa-source/scripts/repo_manager.py add \
+            --ipa "$RUNNER_TEMP/test-output.ipa" \
+            --url "https://github.com/RBx9/RBx9.github.io/releases/download/test-only/RBx9-Injected-Test.ipa" \
+            --date "2026-11-01T00:00:00Z" \
+            --notes-file "$RUNNER_TEMP/test-notes.txt"
+          python ipa-source/scripts/repo_manager.py render
+          echo "PASS: Injected IPA can be added to ESign catalog in isolated runner"
