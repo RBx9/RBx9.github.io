@@ -1,0 +1,38 @@
+name: Verify Real RBx9 Injection Inputs (No Publish)
+
+on:
+  push:
+    branches: [fix/source-manager-dylib-injection-no-publish]
+    paths:
+      - '.github/workflows/test-real-injection-no-publish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-existing-user-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install injection engine
+        run: python -m pip install 'lief==0.17.6'
+      - name: Download uploaded IPA and dylib for read-only testing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: source-manager-inject-1793505301-26434FA8
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/input"
+          gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/input" --pattern 'original-ipa.upload' --pattern '*.dylib' --pattern 'publish-name.txt'
+          test -s "$RUNNER_TEMP/input/original-ipa.upload"
+          test -s "$RUNNER_TEMP/input/RBx9Tok.dylib"
+      - name: Reproduce real injection using corrected engine
+        run: |
+          set -euo pipefail
+          python source-manager/scripts/prepare_injected_ipa.py --ipa "$RUNNER_TEMP/input/original-ipa.upload" --library "$RUNNER_TEMP/input/RBx9Tok.dylib" --output "$RUNNER_TEMP/test-output.ipa"
+          unzip -tq "$RUNNER_TEMP/test-output.ipa"
+          test -s "$RUNNER_TEMP/test-output.ipa"
