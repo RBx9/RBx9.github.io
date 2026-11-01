@@ -1,0 +1,28 @@
+name: RBx9SourceManager
+options:
+  bundleIdPrefix: com.rbx9
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CODE_SIGNING_ALLOWED: "NO"
+    PRODUCT_NAME: "RBx9SourceManager"
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "NO"
+targets:
+  RBx9SourceManager:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rbx9.sourcemanager
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: "NO"
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SUPPORTS_MACCATALYST: "NO"
+        CODE_SIGNING_ALLOWED: "NO"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
