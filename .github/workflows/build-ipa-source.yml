@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - 'ipa-source/catalog.json'
+      - 'ipa-source/source-settings.json'
       - 'ipa-source/scripts/repo_manager.py'
       - 'ipa-source/scripts/sync_stremio.py'
       - '.github/workflows/build-ipa-source.yml'
@@ -56,8 +57,8 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/release.json"
           ipa_count="$(jq '[.assets[].name | select(endswith(".ipa"))] | length' "$RUNNER_TEMP/release.json")"
           if [[ "$ipa_count" -eq 0 ]]; then
-            echo "::error::Release '$RELEASE_TAG' has no .ipa attached. Upload the .ipa, then rerun this workflow."
-            exit 1
+            echo "No IPA attached to release; skipping IPA import."
+            exit 0
           fi
           mkdir -p "$RUNNER_TEMP/release-ipas"
           gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/release-ipas" --pattern '*.ipa'
