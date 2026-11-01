@@ -349,7 +349,21 @@ final class GitHubManager: ObservableObject {
         let local = FileManager.default.temporaryDirectory
             .appendingPathComponent("rbx9-import-\(UUID().uuidString).\(expected)")
         do {
-            try FileManager.default.copyItem(at:url, to:local)
+            var fileError: NSError?
+            var readError: Error?
+            // iCloud Drive and third-party providers can expose placeholder
+            // security-scoped URLs. Coordinated reads retrieve the actual file.
+            NSFileCoordinator(filePresenter:nil).coordinate(
+                readingItemAt:url, options:[], error:&fileError
+            ) { readableURL in
+                do { try FileManager.default.copyItem(at:readableURL,to:local) }
+                catch { readError = error }
+            }
+            if let fileError { throw fileError }
+            if let readError { throw readError }
+            guard FileManager.default.fileExists(atPath:local.path) else {
+                throw ManagerError.message("Files did not provide the selected document.")
+            }
             let originalName = url.lastPathComponent
             Task { await upload(stagedFile:local, originalName:originalName, sileo:sileo) }
         } catch {
@@ -404,8 +418,10 @@ final class GitHubManager: ObservableObject {
             guard let downloadURL = asset["browser_download_url"] as? String else {
                 throw ManagerError.message("GitHub did not return an asset URL")
             }
-            // For Sileo, add the package first: the metadata builder verifies
-            // the SHA-256 and then rebuilds the public package index.
+            status = "Publishing GitHub release…"
+            _ = try await api("PATCH","/repos/\(repository)/releases/\(id)",body:try json(["draft":false]))
+            // Publish the binary before adding its URL to the Sileo index,
+            // otherwise the builder may try to download a private draft.
             if sileo {
                 status = "Adding DEB to Sileo package index…"
                 let sha256 = try fileHash(stagedFile)
@@ -417,8 +433,6 @@ final class GitHubManager: ObservableObject {
                 }
                 try await put("package-sources.txt",data:Data((old+"\n"+row+"\n").utf8))
             }
-            status = "Publishing GitHub release…"
-            _ = try await api("PATCH","/repos/\(repository)/releases/\(id)",body:try json(["draft":false]))
             await refresh()
             status = "Uploaded successfully. Source publishing is running; refresh your client when finished."
         } catch {
