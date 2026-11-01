@@ -670,17 +670,36 @@ final class GitHubManager: ObservableObject {
             var job = RBx9PendingUploadStore.load()
             if job?.stagedPath != stagedFile.path {
                 job = RBx9PendingPublication(stagedPath:stagedFile.path,filename:name,
-                    sileo:sileo,releaseID:nil,completedAssetURL:nil)
+                    sileo:sileo,releaseID:nil,completedAssetURL:nil,
+                    tag:"source-manager-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8))")
                 try RBx9PendingUploadStore.save(job!)
             }
             guard var active=job else { throw ManagerError.message("Could not save upload queue") }
             if active.releaseID == nil {
                 status="Creating GitHub draft release…"
-                let tag="source-manager-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8))"
-                let response=try parse(try await api("POST","/repos/\(repository)/releases",
-                    body:try json(["tag_name":tag,"name":name,
-                                   "body":"Uploaded using RBx9 Source Manager",
-                                   "draft":true,"prerelease":false])))
+                if active.tag == nil {
+                    active.tag="source-manager-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8))"
+                    try RBx9PendingUploadStore.save(active)
+                }
+                let tag=active.tag!
+                let existing=try? await apiWhenConnected("GET",
+                    "/repos/\(repository)/releases/tags/\(tag)")
+                let releaseData:Data
+                if let existing { releaseData=existing }
+                else {
+                    do {
+                        releaseData=try await apiWhenConnected("POST","/repos/\(repository)/releases",
+                            body:try json(["tag_name":tag,"name":name,
+                                          "body":"Uploaded using RBx9 Source Manager",
+                                          "draft":true,"prerelease":false]))
+                    } catch {
+                        if let recovered=try? await apiWhenConnected("GET",
+                            "/repos/\(repository)/releases/tags/\(tag)") {
+                            releaseData=recovered
+                        } else { throw error }
+                    }
+                }
+                let response=try parse(releaseData)
                 guard let id=response["id"] as? Int else {
                     throw ManagerError.message("Could not create draft release")
                 }
@@ -709,7 +728,7 @@ final class GitHubManager: ObservableObject {
                     try await put("package-sources.txt",data:Data(updated.utf8))
                 }
             }
-            _=try await api("PATCH","/repos/\(repository)/releases/\(releaseID)",body:try json(["draft":false]))
+            _=try await apiWhenConnected("PATCH","/repos/\(repository)/releases/\(releaseID)",body:try json(["draft":false]))
             succeeded=true
             uploadFraction=1
             uploadRemainder="0 MB left · Upload complete"
