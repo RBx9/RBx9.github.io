@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: rbx9-source-manager-v1-1
+  group: rbx9-source-manager-v1-1-1
   cancel-in-progress: true
 
 jobs:
@@ -44,19 +44,19 @@ jobs:
           mkdir -p "$RUNNER_TEMP/Payload"
           cp -R "$app" "$RUNNER_TEMP/Payload/"
           cd "$RUNNER_TEMP"
-          /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9SourceManager-v1.1.0-unsigned.ipa" Payload
-          test -s "$GITHUB_WORKSPACE/RBx9SourceManager-v1.1.0-unsigned.ipa"
+          /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9SourceManager-v1.1.1-unsigned.ipa" Payload
+          test -s "$GITHUB_WORKSPACE/RBx9SourceManager-v1.1.1-unsigned.ipa"
       - name: Publish unsigned IPA in GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="rbx9-source-manager-v1.1.0"
-          asset="RBx9SourceManager-v1.1.0-unsigned.ipa"
+          tag="rbx9-source-manager-v1.1.1"
+          asset="RBx9SourceManager-v1.1.1-unsigned.ipa"
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "$asset" --clobber
           else
             gh release create "$tag" "$asset" --target "$GITHUB_SHA" \
-              --title "RBx9 Source Manager v1.1.0 (Unsigned IPA)" \
-              --notes "Move source icon picker into each tab; repair iOS Files importer, swipe-to-delete confirmation, Save Changes, and durable package removal. Sign with your own certificate."
+              --title "RBx9 Source Manager v1.1.1 (Unsigned IPA)" \
+              --notes "Repair IPA and DEB selection from iPhone Files with native UIDocumentPicker and registered document types. Sign with your own certificate."
           fi
