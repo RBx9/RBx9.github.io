@@ -11,6 +11,23 @@
 <key>LSRequiresIPhoneOS</key><true/>
 <key>UILaunchScreen</key><dict/>
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
+<key>UTImportedTypeDeclarations</key>
+<array>
+    <dict>
+        <key>UTTypeIdentifier</key><string>com.rbx9.source-manager.ipa</string>
+        <key>UTTypeDescription</key><string>iOS Application Archive (IPA)</string>
+        <key>UTTypeConformsTo</key><array><string>public.data</string></array>
+        <key>UTTypeTagSpecification</key>
+        <dict><key>public.filename-extension</key><array><string>ipa</string></array></dict>
+    </dict>
+    <dict>
+        <key>UTTypeIdentifier</key><string>com.rbx9.source-manager.deb</string>
+        <key>UTTypeDescription</key><string>Debian Software Package (DEB)</string>
+        <key>UTTypeConformsTo</key><array><string>public.data</string></array>
+        <key>UTTypeTagSpecification</key>
+        <dict><key>public.filename-extension</key><array><string>deb</string></array></dict>
+    </dict>
+</array>
 <key>NSPhotoLibraryUsageDescription</key><string>Select source artwork to publish on your GitHub repository.</string>
 <key>ITSAppUsesNonExemptEncryption</key><false/>
 </dict></plist>
