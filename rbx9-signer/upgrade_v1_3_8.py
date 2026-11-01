@@ -177,9 +177,32 @@ final class RBx9DylibStorage: ObservableObject {
         }
     }
 
-    static var directory: URL {
+    static let appGroupID = "group.com.rbx9.shared"
+    private static var localDirectory: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("RBx9DylibStorage", isDirectory: true)
+    }
+    static var directory: URL {
+        if let group = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: appGroupID) {
+            return group.appendingPathComponent("RBx9DylibStorage", isDirectory: true)
+        }
+        return localDirectory
+    }
+
+    private static func migrateLocalFilesIfShared() {
+        guard directory.standardizedFileURL != localDirectory.standardizedFileURL else { return }
+        let fm = FileManager.default
+        try? fm.createDirectory(at: directory, withIntermediateDirectories: true)
+        for file in (try? fm.contentsOfDirectory(
+            at: localDirectory, includingPropertiesForKeys: nil)) ?? [] {
+            guard ["dylib","deb"].contains(file.pathExtension.lowercased()) else { continue }
+            let target = directory.appendingPathComponent(file.lastPathComponent)
+            if !fm.fileExists(atPath: target.path) {
+                // Preserve original copies in case provisioning later changes.
+                try? fm.copyItem(at: file, to: target)
+            }
+        }
     }
 
     static func isStored(_ url: URL) -> Bool {
@@ -201,6 +224,7 @@ final class RBx9DylibStorage: ObservableObject {
     }
 
     func refresh() {
+        Self.migrateLocalFilesIfShared()
         let fm = FileManager.default
         try? fm.createDirectory(at: Self.directory, withIntermediateDirectories: true)
         let files = (try? fm.contentsOfDirectory(
