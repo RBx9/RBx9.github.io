@@ -10,7 +10,7 @@ NSGraphicsContext.current?.imageInterpolation = .high
 
 let full = NSRect(x:0,y:0,width:size,height:size)
 NSColor(calibratedRed:0.025,green:0.047,blue:0.10,alpha:1).setFill()
-full.fill()
+NSBezierPath(rect:full).fill()
 
 let bg = NSBezierPath(roundedRect:full.insetBy(dx:10,dy:10),xRadius:220,yRadius:220)
 NSGradient(starting:NSColor(calibratedRed:0.01,green:0.20,blue:0.39,alpha:1),ending:NSColor(calibratedRed:0.016,green:0.035,blue:0.12,alpha:1))!.draw(in:bg,angle:135)
