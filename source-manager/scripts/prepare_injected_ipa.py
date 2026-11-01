@@ -48,7 +48,7 @@ def main():
         for library in a.library:
             source = Path(library)
             name = source.name
-            if not re.fullmatch(r"[A-Za-z0-9._+-]+\\.dylib", name, re.I):
+            if not re.fullmatch(r"[A-Za-z0-9._+-]+\.dylib", name, re.I):
                 raise ValueError("Invalid library name")
             if name.lower() in names:
                 raise ValueError("Duplicate library")
