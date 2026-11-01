@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-# RBx9 Signer v1.3.11 - replace Feather's original launch image with RBx9,
-# then hand off to the short native RBx9 transmission opening.
-# Applied after v1.3.9 (intentionally skips the v1.3.10 overlay removal).
+# RBx9 Signer v1.3.11 - one startup screen only:
+# replace Feather's original iOS launch image with RBx9.
+# Applied after v1.3.10, which removed the separate SwiftUI startup overlay.
 from pathlib import Path
+import json
+import shutil
 
 root=Path("feather")
 app=root/"Feather"
@@ -58,20 +60,30 @@ new='''<?xml version="1.0" encoding="UTF-8"?>
 '''
 storyboard.write_text(new)
 
-# The earlier 1.3.7/1.3.8 patches provide the cyan RBx9 splash,
-# retained with a 230 ms automatic dismissal. Don't modify the animation.
+# iOS owns this static system launch screen. Do not overlay an animated
+# RBx9 or Feather startup; 1.3.10 removed the separate SwiftUI animation.
 entry=(app/"FeatherApp.swift").read_text()
-for expected in [
-    'RBx9TransmissionStartup()',
-    'private struct RBx9TransmissionStartup: View',
+for unexpected in [
+    'RBx9TransmissionStartup',
     'rbx9ShowingStartup',
     '230_000_000',
-    'Image("RBx9LaunchIcon")',
+    'TRANSMISSION ESTABLISHED',
 ]:
-    if expected not in entry:
-        raise RuntimeError("RBx9 transmission animation missing: "+expected)
-if not (app/"Resources/Assets.xcassets/RBx9LaunchIcon.imageset/rbx9-launch.png").is_file():
-    raise RuntimeError("RBx9 splash brand icon missing")
+    if unexpected in entry:
+        raise RuntimeError("A second startup animation is still present: "+unexpected)
+
+# The v1.3.10 cleanup deleted the old splash-only assets. Restore only the
+# branded image resource needed by the real iOS launch storyboard.
+icon=app/"Resources/Assets.xcassets/RBx9LaunchIcon.imageset"
+icon.mkdir(parents=True, exist_ok=True)
+shutil.copy2("rbx9-source-icon.png", icon/"rbx9-launch.png")
+(icon/"Contents.json").write_text(json.dumps({
+    "images": [{"filename": "rbx9-launch.png", "idiom": "universal"}],
+    "info": {"author": "xcode", "version": 1}
+}, indent=2)+"\n")
+if not (icon/"rbx9-launch.png").is_file():
+    raise RuntimeError("iOS launch RBx9 brand icon missing")
+
 if 'Glyph' in new or 'image="RBx9LaunchIcon"' not in new:
     raise RuntimeError("iOS launch storyboard does not use RBx9 artwork")
 if new.count('image="RBx9LaunchIcon"') != 1:
@@ -87,8 +99,8 @@ if project.count('INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboa
 
 cfg=root/"Feather.xcconfig"
 text=cfg.read_text()
-oldversion="FEATHER_PROJECT_VERSION=1.3.9"
+oldversion="FEATHER_PROJECT_VERSION=1.3.10"
 if text.count(oldversion) != 1:
-    raise RuntimeError("Expected 1.3.9 patch base for RBx9 v1.3.11")
+    raise RuntimeError("Expected 1.3.10 patch base for RBx9 v1.3.11")
 cfg.write_text(text.replace(oldversion, "FEATHER_PROJECT_VERSION=1.3.11", 1))
-print("RBx9 v1.3.11: system launch shows RBx9 artwork (not Feather), followed by short RBx9 transmission")
+print("RBx9 v1.3.11: one iOS system launch screen with RBx9 logo; no Feather glyph or secondary animation")
