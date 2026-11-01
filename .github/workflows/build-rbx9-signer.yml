@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: rbx9-signer-build-${{ github.ref }}
@@ -68,6 +68,9 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_4.py
           python3 rbx9-signer/upgrade_v1_3_5.py
           python3 rbx9-signer/upgrade_v1_3_6.py
+          python3 rbx9-signer/upgrade_v1_3_7.py
+          test -f feather/Feather/Resources/Assets.xcassets/RBx9LaunchIcon.imageset/rbx9-launch.png
+          grep -F 'RBx9TransmissionStartup()' feather/Feather/FeatherApp.swift
           grep -F 'FEATHER_PRODUCT_BUNDLE_IDENTIFIER=com.rbx9.signer' feather/Feather.xcconfig
           grep -F 'Sign & Install' feather/Feather/Views/Signing/SigningView.swift
           ! grep -Fq 'Dylib Changes Ready' feather/Feather/Views/Signing/Shared/SigningDylibView.swift
@@ -122,20 +125,75 @@ jobs:
           test -f "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app/Info.plist"
           (
             cd "$RUNNER_TEMP/rbx9-package"
-            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.3.6-unsigned.ipa" Payload
+            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.3.7-unsigned.ipa" Payload
           )
           # Guard against empty/invalid packages before uploading them.
-          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.3.6-unsigned.ipa" | tail -1
-          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.3.6-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
-          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.3.6-unsigned.ipa")" -gt 1000000
-          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.3.6-unsigned.ipa"
+          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.3.7-unsigned.ipa" | tail -1
+          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.3.7-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
+          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.3.7-unsigned.ipa")" -gt 1000000
+          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.3.7-unsigned.ipa"
 
       - name: Upload actual RBx9 IPA
         uses: actions/upload-artifact@v4
         with:
-          name: RBx9-v1.3.6-iOS16plus-unsigned-IPA
-          path: RBx9-v1.3.6-unsigned.ipa
+          name: RBx9-v1.3.7-iOS16plus-unsigned-IPA
+          path: RBx9-v1.3.7-unsigned.ipa
           if-no-files-found: error
+
+      - name: Publish verified v1.3.7 unsigned IPA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="rbx9-signer-v1.3.7"
+          IPA="$GITHUB_WORKSPACE/RBx9-v1.3.7-unsigned.ipa"
+          test -f "$IPA"
+          unzip -t "$IPA" | tail -1
+          if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$IPA" --clobber --repo "$GH_REPO"
+          else
+            gh release create "$TAG" "$IPA" --repo "$GH_REPO" \
+              --target "$GITHUB_SHA" \
+              --title "RBx9 Signer v1.3.7 (Unsigned IPA)" \
+              --notes "New native RBx9 cyan transmission startup animation with scan, glow, selected app icon, and Reduce Motion support. Existing signing, injection, and reinstall workflows are unchanged. Unsigned IPA for iOS 16+; sign with your own certificate. Based on Feather GPL-3.0; source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
+              --latest=false
+          fi
+
+      - name: Checkout ESign source (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: source-main
+
+      - name: Add validated v1.3.7 to ESign and Feather feeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source-main
+          printf '%s\n' 'RBx9 v1.3.7: native transmission-style startup animation with Reduce Motion support.' > ../rbx9-release-notes.txt
+          python3 ipa-source/scripts/repo_manager.py add \
+            --ipa ../RBx9-v1.3.7-unsigned.ipa \
+            --url "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.7/RBx9-v1.3.7-unsigned.ipa" \
+            --date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --notes-file ../rbx9-release-notes.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ipa-source/catalog.json ipa-source/source.json ipa-source/esign.json ipa/index.html esign/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish RBx9 Signer v1.3.7 to IPA catalogs"
+            for attempt in 1 2 3 4 5; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then
+                exit 0
+              fi
+              sleep 3
+            done
+            echo "Could not update ESign main feed after five retries" >&2
+            exit 1
+          fi
 
       - name: Upload build log if unsuccessful
         if: failure()
