@@ -1,0 +1,49 @@
+name: Verify ESign Catalog Import without Publishing
+
+on:
+  push:
+    branches: [fix/source-manager-dylib-injection-no-publish]
+    paths:
+      - '.github/workflows/build-ipa-source.yml'
+      - '.github/workflows/test-source-catalog-unpublished.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download previously uploaded RouterPulse IPA (read only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download 'source-manager-1793518656-7A56CDC6' \
+            --dir "$RUNNER_TEMP" --pattern 'RouterPulse.ipa'
+          unzip -tq "$RUNNER_TEMP/RouterPulse.ipa"
+      - name: Verify catalog updater and clean rebase without pushing
+        run: |
+          set -euo pipefail
+          python3 ipa-source/scripts/repo_manager.py add \
+            --ipa "$RUNNER_TEMP/RouterPulse.ipa" \
+            --url 'https://github.com/RBx9/RBx9.github.io/releases/download/source-manager-1793518656-7A56CDC6/RouterPulse.ipa' \
+            --date '2026-11-01T07:37:43Z'
+          python3 ipa-source/scripts/repo_manager.py render
+          git config user.name 'rbx9-catalog-test'
+          git config user.email 'rbx9-catalog-test@users.noreply.github.com'
+          git add ipa-source/catalog.json ipa-source/source.json ipa-source/esign.json ipa/index.html esign/index.html
+          if ! git diff --cached --quiet; then git commit -m 'dry run catalog import'; fi
+          # Simulate unrelated generated unstaged changes from sync-icons.
+          echo '# dry-run change' >> ipa-source/source-settings.json
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git stash push --include-untracked -m 'runner-only source generator leftovers'
+          fi
+          git fetch origin main
+          git rebase origin/main
+          test -z "$(git status --porcelain)"
+          echo 'PASS: Existing IPA enters catalog, generated files render, and rebase completes'
