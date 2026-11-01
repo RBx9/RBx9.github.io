@@ -767,6 +767,7 @@ struct PrimaryButton:View {
 
 @main struct RBx9SourceManagerApp:App {
     @StateObject private var manager = GitHubManager()
+    @StateObject private var uploadDraft = IPAUploadDraft()
     var body:some Scene {
         WindowGroup {
             TabView {
@@ -777,6 +778,7 @@ struct PrimaryButton:View {
             .tint(Theme.cyan)
             .preferredColorScheme(.dark)
             .environmentObject(manager)
+            .environmentObject(uploadDraft)
         }
     }
 }
@@ -939,15 +941,64 @@ struct PackageDocumentPicker: UIViewControllerRepresentable {
     }
 }
 
+/// The IPA draft lives at app scope and on disk. A Files picker can replace
+/// its SwiftUI presenting view; it must never own or reset the selected IPA.
 @MainActor
 final class IPAUploadDraft: ObservableObject {
-    @Published var ipa: StagedSourceFile?
-    @Published var libraries: [StagedSourceFile] = []
-    @Published var filename = ""
+    @Published var ipa: StagedSourceFile? { didSet { persist() } }
+    @Published var libraries: [StagedSourceFile] = [] { didSet { persist() } }
+    @Published var filename = "" { didSet { persist() } }
+
+    private struct StagedItem: Codable {
+        let path: String
+        let name: String
+        init(_ item: StagedSourceFile) { path = item.url.path; name = item.name }
+        func restore() -> StagedSourceFile? {
+            guard FileManager.default.fileExists(atPath:path) else { return nil }
+            return StagedSourceFile(url:URL(fileURLWithPath:path),name:name)
+        }
+    }
+    private struct Snapshot: Codable {
+        var ipa: StagedItem
+        var libraries: [StagedItem]
+        var filename: String
+    }
+    private static var snapshotURL: URL {
+        RBx9PendingUploadStore.directory
+            .appendingPathComponent("selected-ipa-draft.json",isDirectory:false)
+    }
+    init() {
+        guard let data=try? Data(contentsOf:Self.snapshotURL),
+              let snapshot=try? JSONDecoder().decode(Snapshot.self,from:data),
+              let restoredIPA=snapshot.ipa.restore() else { return }
+        ipa=restoredIPA
+        libraries=snapshot.libraries.compactMap{$0.restore()}
+        filename=snapshot.filename
+    }
+    private func persist() {
+        guard let ipa else {
+            try? FileManager.default.removeItem(at:Self.snapshotURL)
+            return
+        }
+        let snapshot=Snapshot(ipa:StagedItem(ipa),
+                              libraries:libraries.map{StagedItem($0)},
+                              filename:filename)
+        guard let data=try? JSONEncoder().encode(snapshot) else { return }
+        try? data.write(to:Self.snapshotURL,options:.atomic)
+    }
+    /// Called only after successfully staging a new IPA. Choosing dylibs can
+    /// never reach this function or clear the IPA.
+    func selectIPA(_ selected:StagedSourceFile) {
+        ipa=selected
+        libraries=[]
+        filename=(selected.name as NSString).deletingPathExtension
+        persist()
+    }
     func clearWithoutDeleting() {
-        ipa = nil
-        libraries = []
-        filename = ""
+        ipa=nil
+        libraries=[]
+        filename=""
+        try? FileManager.default.removeItem(at:Self.snapshotURL)
     }
 }
 
@@ -959,7 +1010,7 @@ private enum IPAPicker: String, Identifiable {
 struct AppsScreen: View {
     @EnvironmentObject var manager: GitHubManager
     @State private var activePicker: IPAPicker?
-    @StateObject private var draft = IPAUploadDraft()
+    @EnvironmentObject private var draft: IPAUploadDraft
     @StateObject private var vault = RBx9DylibVault.shared
     @State private var renameDylib: SavedDylib?
     @State private var renameDylibText = ""
@@ -1154,9 +1205,7 @@ struct AppsScreen: View {
                                     if let previous = draft.ipa {
                                         manager.discardStagedFiles([previous] + draft.libraries)
                                     }
-                                    draft.ipa = newFile
-                                    draft.libraries = []
-                                    draft.filename = (newFile.name as NSString).deletingPathExtension
+                                    draft.selectIPA(newFile)
                                 }
                             }
                         case .dylib:
@@ -1188,6 +1237,7 @@ struct AppsScreen: View {
                     },
                     onCancel: { activePicker = nil }
                 )
+                .id(kind.id) // Prevent UIKit picker/coordinator reuse across file types.
             }
             .onAppear { vault.refresh() }
             .alert("Rename dylib",isPresented:Binding(
