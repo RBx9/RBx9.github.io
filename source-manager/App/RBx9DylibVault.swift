@@ -61,14 +61,17 @@ final class RBx9DylibVault: ObservableObject {
     enum SaveResult {
         case saved, duplicate
     }
-    func save(_ input:URL) throws -> SaveResult {
-        guard input.pathExtension.lowercased() == "dylib" else {
+    func save(_ input:URL,originalName:String? = nil) throws -> SaveResult {
+        let requestedName = originalName ?? input.lastPathComponent
+        guard requestedName.lowercased().hasSuffix(".dylib"),
+              requestedName.range(of:"^[A-Za-z0-9][A-Za-z0-9._+-]{0,96}\\.dylib$",options:.regularExpression) != nil,
+              !requestedName.contains("..") else {
             throw ManagerError.message("Select a .dylib file.")
         }
         refresh()
         let hash = try sha256(input)
         if items.contains(where:{$0.hash == hash}) { return .duplicate }
-        let dest = root.appendingPathComponent(input.lastPathComponent)
+        let dest = root.appendingPathComponent(requestedName)
         guard !FileManager.default.fileExists(atPath:dest.path) else {
             throw ManagerError.message("A different dylib already uses this filename. Rename it first.")
         }
