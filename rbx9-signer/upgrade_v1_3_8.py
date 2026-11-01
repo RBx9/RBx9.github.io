@@ -487,6 +487,7 @@ for record in exports:
 if not any("com.rbx9.signer.ipa" in x.get("LSItemContentTypes", []) for x in types):
     raise RuntimeError("IPA handler declaration missing")
 metadata["LSSupportsOpeningDocumentsInPlace"] = True
+metadata["UIFileSharingEnabled"] = True
 with plist.open("wb") as f:
     plistlib.dump(metadata, f, sort_keys=False)
 
