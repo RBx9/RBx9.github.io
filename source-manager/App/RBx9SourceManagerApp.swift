@@ -781,12 +781,9 @@ struct AppsScreen: View {
     @State private var renameDylib: SavedDylib?
     @State private var renameDylibText = ""
     @State private var deleteDylib: SavedDylib?
-    @State private var selectedStorage: Set<String> = []
     @State private var pendingDelete: SourceApp?
 
-    var body: some View {
-        NavigationStack {
-            List {
+    @ViewBuilder private var uploadSection: some View {
                 Section {
                     SourceHeader(sileo:false)
                     HStack {
@@ -834,7 +831,7 @@ struct AppsScreen: View {
                                 }
                             }
                             PrimaryButton(
-                                title:stagedLibraries.isEmpty ? "Publish Original IPA" : "Inject Dylibs & Publish",
+                                title:draft.libraries.isEmpty ? "Publish Original IPA" : "Inject Dylibs & Publish",
                                 symbol:"arrow.up.doc.fill"
                             ) {
                                 guard let ipa = draft.ipa else { return }
@@ -853,6 +850,8 @@ struct AppsScreen: View {
                     }
                 }
                 .listRowBackground(Color.white.opacity(0.055))
+    }
+    @ViewBuilder private var storageSection: some View {
                 Section("Dylib Storage") {
                     HStack {
                         Label("\(vault.items.count) saved dylibs", systemImage:"externaldrive.fill")
@@ -903,6 +902,13 @@ struct AppsScreen: View {
                         }
                     }
                 }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                uploadSection
+                storageSection
                 Section("Published applications") {
                     ForEach(manager.apps) { app in
                         NavigationLink {
