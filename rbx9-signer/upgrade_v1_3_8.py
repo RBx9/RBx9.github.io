@@ -31,7 +31,7 @@ s = s.replace("@State private var _isAddingPresenting = false", '''@State privat
 anchor = ".safeAreaInset(edge: .bottom, spacing: 0)"
 pos = s.index(anchor)
 close = s.rfind("\n\t\t}\n", 0, pos)
-if close < 0 or "NBSection(.localized(\"Tweaks\"))" not in s[:close]:
+if close < 0 or "NBList" not in s[:close]:
     raise RuntimeError("Quick Editor NBList closing anchor not found")
 stored_section = """
             NBSection("Dylib Storage") {
