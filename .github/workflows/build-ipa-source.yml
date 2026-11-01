@@ -11,6 +11,7 @@ on:
     paths:
       - 'ipa-source/catalog.json'
       - 'ipa-source/source-settings.json'
+      - 'ipa-source/hidden-apps.json'
       - 'ipa-source/scripts/repo_manager.py'
       - 'ipa-source/scripts/sync_stremio.py'
       - '.github/workflows/build-ipa-source.yml'
