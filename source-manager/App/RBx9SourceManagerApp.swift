@@ -94,6 +94,7 @@ final class GitHubManager: ObservableObject {
             Task {
                 await refresh()
                 await resumePendingPublicationIfNeeded()
+                await resumeSavedInjectionIfNeeded()
             }
         }
     }
@@ -533,46 +534,93 @@ final class GitHubManager: ObservableObject {
             }
         }
     }
-    private func uploadInjectedIPA(_ ipa:StagedSourceFile, libraries:[StagedSourceFile], outputName:String) async {
-        busy = true
+    private func apiWhenConnected(_ method:String,_ path:String,body:Data? = nil) async throws -> Data {
+        var attempts=0
+        while true {
+            do { return try await api(method,path,body:body) }
+            catch {
+                guard isOfflineError(error) else { throw error }
+                attempts += 1
+                status="Waiting for internet. Upload is saved and will continue automatically…"
+                try await Task.sleep(nanoseconds:UInt64(min(30,attempts*3))*1_000_000_000)
+            }
+        }
+    }
+    private func uploadInjectedIPA(_ ipa:StagedSourceFile,libraries:[StagedSourceFile],outputName:String) async {
+        guard !busy else { return }
+        busy=true
+        var finished=false
         defer {
-            busy = false
-            discardStagedFiles([ipa] + libraries)
+            busy=false
+            if finished {
+                RBx9PendingInjectionStore.clear()
+                discardStagedFiles([ipa]+libraries)
+            }
         }
         do {
-            guard libraries.count <= 16 else { throw ManagerError.message("Choose up to 16 dylibs.") }
-            let fileName = try checkedPublicationName(outputName,ext:"ipa")
-            let metadata = FileManager.default.temporaryDirectory
-                .appendingPathComponent("rbx9-publish-name-" + UUID().uuidString + ".txt")
-            defer { try? FileManager.default.removeItem(at:metadata) }
-            try Data((fileName + "\n").utf8).write(to:metadata,options:.atomic)
-            let names = libraries.map { $0.name.lowercased() }
+            guard !libraries.isEmpty && libraries.count <= 16 else {
+                throw ManagerError.message("Choose between 1 and 16 dylibs.")
+            }
+            let fileName=try checkedPublicationName(outputName,ext:"ipa")
+            let names=libraries.map{$0.name.lowercased()}
             guard Set(names).count == libraries.count else {
-                throw ManagerError.message("Duplicate dylib filenames aren't allowed.")
+                throw ManagerError.message("Duplicate dylib filenames are not allowed.")
             }
-            status = "Creating injection release…"
-            let tag = "source-manager-inject-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8))"
-            let body = "Prepared by RBx9 Source Manager. Original IPA: \(ipa.name). Download filename: \(fileName). Dylibs: \(libraries.map(\.name).joined(separator:", ")). Output is unsigned and must be signed before installation."
-            let release = try parse(try await api("POST","/repos/\(repository)/releases",
-                body:try json(["tag_name":tag,"name":"Injected \(ipa.name)",
-                               "body":body,"draft":true,"prerelease":false])))
-            guard let id = release["id"] as? Int else {
-                throw ManagerError.message("Could not create GitHub release")
+            var job=RBx9PendingInjectionStore.load()
+            if job?.ipaPath != ipa.url.path {
+                job=RBx9PendingInjection(ipaPath:ipa.url.path,ipaName:ipa.name,
+                    outputName:fileName,
+                    libraries:libraries.map{ RBx9PendingDylib(path:$0.url.path,name:$0.name) },
+                    tag:"source-manager-inject-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8))",
+                    releaseID:nil)
+                try RBx9PendingInjectionStore.save(job!)
             }
-            status = "Uploading original IPA…"
-            _ = try await uploadReleaseAsset(ipa.url,name:"original-ipa.upload",releaseID:id)
-            _ = try await uploadReleaseAsset(metadata,name:"publish-name.txt",releaseID:id)
+            guard var active=job else { throw ManagerError.message("Could not save injection queue") }
+            let metadata=RBx9PendingUploadStore.directory
+                .appendingPathComponent("publish-name-" + active.tag + ".txt")
+            defer { if finished { try? FileManager.default.removeItem(at:metadata) } }
+            try Data((fileName+"\n").utf8).write(to:metadata,options:.atomic)
+            if active.releaseID == nil {
+                status="Creating injection draft release…"
+                // A GET by the stored unique tag handles lost POST responses
+                // without creating a second release.
+                let existing=try? await apiWhenConnected("GET",
+                    "/repos/\(repository)/releases/tags/\(active.tag)")
+                let releaseData:Data
+                if let existing { releaseData=existing }
+                else {
+                    let body="Prepared by RBx9 Source Manager. Original IPA: \(ipa.name). Download filename: \(fileName). Dylibs: \(libraries.map(\.name).joined(separator:", ")). Unsigned IPA."
+                    releaseData=try await apiWhenConnected("POST",
+                        "/repos/\(repository)/releases",
+                        body:try json(["tag_name":active.tag,"name":"Injected \(fileName)",
+                            "body":body,"draft":true,"prerelease":false]))
+                }
+                guard let id=try parse(releaseData)["id"] as? Int else {
+                    throw ManagerError.message("Could not create injection release")
+                }
+                active.releaseID=id
+                try RBx9PendingInjectionStore.save(active)
+            }
+            guard let id=active.releaseID else { throw ManagerError.message("Missing release ID") }
+            status="Uploading original IPA…"
+            _=try await uploadReleaseAsset(ipa.url,name:"original-ipa.upload",releaseID:id)
+            status="Uploading IPA publication name…"
+            _=try await uploadReleaseAsset(metadata,name:"publish-name.txt",releaseID:id)
             for (index,lib) in libraries.enumerated() {
-                status = "Uploading dylib \(index + 1)/\(libraries.count)…"
-                _ = try await uploadReleaseAsset(lib.url,name:lib.name,releaseID:id)
+                status="Uploading dylib \(index+1)/\(libraries.count)…"
+                _=try await uploadReleaseAsset(lib.url,name:lib.name,releaseID:id)
             }
-            status = "Starting verified dylib packaging…"
-            _ = try await api("PATCH","/repos/\(repository)/releases/\(id)",body:try json(["draft":false]))
-            status = "Injection requested. GitHub Actions will publish the modified IPA only after it passes verification."
-            alertMessage = "Upload complete. Your modified IPA will be added to ESign after the GitHub injection workflow succeeds. If it fails, no injected IPA will be published."
+            status="Handing off to the injection verifier…"
+            _=try await apiWhenConnected("PATCH","/repos/\(repository)/releases/\(id)",
+                body:try json(["draft":false]))
+            finished=true
+            uploadFraction=1
+            uploadRemainder="0 MB left · Transfer complete"
+            status="Injection queued. The modified IPA is published only after GitHub verification."
+            alertMessage="All files uploaded. The modified IPA will appear in ESign after verification succeeds."
         } catch {
-            status = error.localizedDescription
-            alertMessage = error.localizedDescription
+            status="Injection upload paused: \(error.localizedDescription)"
+            alertMessage="Your IPA and dylibs are saved locally. The app will retry this upload when reopened."
         }
     }
     func importFile(_ url:URL,sileo:Bool) {
@@ -589,6 +637,21 @@ final class GitHubManager: ObservableObject {
         }
         status = "Resuming saved upload \(job.filename)…"
         await upload(stagedFile:staged,originalName:job.filename,sileo:job.sileo)
+    }
+    private func resumeSavedInjectionIfNeeded() async {
+        guard !busy,let job=RBx9PendingInjectionStore.load() else { return }
+        let ipaURL=URL(fileURLWithPath:job.ipaPath)
+        let files=job.libraries.map {
+            StagedSourceFile(url:URL(fileURLWithPath:$0.path),name:$0.name)
+        }
+        guard FileManager.default.fileExists(atPath:ipaURL.path),
+              files.allSatisfy({FileManager.default.fileExists(atPath:$0.url.path)}) else {
+            status="Saved injection files are missing. Re-select IPA and dylibs."
+            return
+        }
+        status="Resuming your saved IPA+dylib upload…"
+        await uploadInjectedIPA(StagedSourceFile(url:ipaURL,name:job.ipaName),
+                                libraries:files,outputName:job.outputName)
     }
     private func upload(stagedFile:URL,originalName:String,sileo:Bool) async {
         guard !busy else { return }
