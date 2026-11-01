@@ -469,7 +469,9 @@ final class GitHubManager: ObservableObject {
         } else {
             timeText = "Calculating time…"
         }
-        uploadRemainder = String(format:"%.1f MB left · %@",Double(remaining)/mb,timeText)
+        uploadRemainder = remaining == 0
+            ? "Transfer sent · waiting for GitHub confirmation…"
+            : String(format:"%.1f MB left · %@",Double(remaining)/mb,timeText)
     }
     /// End the transfer indicator when GitHub confirms the asset POST.
     /// The separate GitHub Actions packaging/catalog phase is NOT a file upload.
