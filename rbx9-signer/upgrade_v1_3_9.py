@@ -224,7 +224,7 @@ private struct RBx9RenameSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Filename") {
+                Section {
                     HStack(spacing: 6) {
                         TextField("Name", text: $newName)
                             .textInputAutocapitalization(.never)
@@ -232,6 +232,8 @@ private struct RBx9RenameSheet: View {
                         Text(verbatim: "." + item.url.pathExtension.lowercased())
                             .foregroundStyle(.secondary)
                     }
+                } header: {
+                    Text("Filename")
                 } footer: {
                     Text("The saved binary is not modified. The file extension stays unchanged.")
                 }
