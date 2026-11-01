@@ -705,7 +705,11 @@ struct StatusPanel: View {
 /// Native iOS document browser. IPA and DEB are not always recognized by
 /// SwiftUI's generic .item fileImporter filter; the UIKit import-copy picker
 /// uses explicitly registered extensions plus broad document data types.
+enum PackagePickKind {
+    case ipa, deb, dylib
+}
 struct PackageDocumentPicker: UIViewControllerRepresentable {
+    let kind: PackagePickKind
     let multiple: Bool
     let onPick: ([URL]) -> Void
     let onCancel: () -> Void
@@ -713,9 +717,15 @@ struct PackageDocumentPicker: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         let ipaType = UTType(importedAs: "com.rbx9.source-manager.ipa", conformingTo: .data)
         let debType = UTType(importedAs: "com.rbx9.source-manager.deb", conformingTo: .data)
+        let dylibType = UTType(importedAs:"com.rbx9.source-manager.dylib",conformingTo:.data)
+        let supported: [UTType]
+        switch kind {
+        case .ipa: supported = [ipaType, .data, .item, .archive]
+        case .deb: supported = [debType, .data, .item, .archive]
+        case .dylib: supported = [dylibType]
+        }
         let picker = UIDocumentPickerViewController(
-            forOpeningContentTypes: [ipaType, debType, .data, .item, .archive],
-            asCopy: true
+            forOpeningContentTypes:supported, asCopy:true
         )
         picker.delegate = context.coordinator
         picker.allowsMultipleSelection = multiple
@@ -746,13 +756,32 @@ struct PackageDocumentPicker: UIViewControllerRepresentable {
     }
 }
 
+@MainActor
+final class IPAUploadDraft: ObservableObject {
+    @Published var ipa: StagedSourceFile?
+    @Published var libraries: [StagedSourceFile] = []
+    @Published var filename = ""
+    func clearWithoutDeleting() {
+        ipa = nil
+        libraries = []
+        filename = ""
+    }
+}
+
+private enum IPAPicker: String, Identifiable {
+    case ipa, dylib, vaultImport
+    var id: String { rawValue }
+}
+
 struct AppsScreen: View {
     @EnvironmentObject var manager: GitHubManager
-    @State private var importer = false
-    @State private var libraryImporter = false
-    @State private var stagedIPA: StagedSourceFile?
-    @State private var publicationBaseName = ""
-    @State private var stagedLibraries: [StagedSourceFile] = []
+    @State private var activePicker: IPAPicker?
+    @StateObject private var draft = IPAUploadDraft()
+    @StateObject private var vault = RBx9DylibVault.shared
+    @State private var renameDylib: SavedDylib?
+    @State private var renameDylibText = ""
+    @State private var deleteDylib: SavedDylib?
+    @State private var selectedStorage: Set<String> = []
     @State private var pendingDelete: SourceApp?
 
     var body: some View {
@@ -767,16 +796,16 @@ struct AppsScreen: View {
                     }
                     .font(.caption)
                     PrimaryButton(title:"Select IPA from Files", symbol:"plus.circle.fill") {
-                        importer = true
+                        activePicker = .ipa
                     }
                     .disabled(manager.busy || !manager.connected)
-                    if let ipa = stagedIPA {
+                    if let ipa = draft.ipa {
                         VStack(alignment:.leading,spacing:12) {
                             Label(ipa.name,systemImage:"doc.zipper")
                                 .font(.headline)
                                 .lineLimit(2)
                             HStack(spacing:8) {
-                                TextField("Download filename",text:$publicationBaseName)
+                                TextField("Download filename",text:$draft.filename)
                                     .textFieldStyle(.roundedBorder)
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled()
@@ -784,23 +813,23 @@ struct AppsScreen: View {
                             }
                             Text("Rename the downloadable IPA before publishing. This doesn't change the app's name or bundle ID.")
                                 .font(.caption).foregroundStyle(.secondary)
-                            Text(stagedLibraries.isEmpty ? "No dylibs selected. You can upload the original IPA or add libraries first." : "\(stagedLibraries.count) selected dylib(s) will be embedded in the IPA.")
+                            Text(draft.libraries.isEmpty ? "No dylibs selected. You can upload the original IPA or add libraries first." : "\(draft.libraries.count) selected dylib(s) will be embedded in the IPA.")
                                 .font(.caption).foregroundStyle(.secondary)
                             Button {
-                                libraryImporter = true
+                                activePicker = .dylib
                             } label: {
                                 Label("Add Dylibs from Files",systemImage:"puzzlepiece.extension.fill")
                                     .font(.subheadline.bold()).foregroundStyle(Theme.cyan)
                             }
                             .disabled(manager.busy)
-                            ForEach(stagedLibraries) { item in
+                            ForEach(draft.libraries) { item in
                                 HStack {
                                     Image(systemName:"puzzlepiece.fill").foregroundStyle(Theme.cyan)
                                     Text(item.name).font(.caption).lineLimit(1)
                                     Spacer()
                                     Button(role:.destructive) {
                                         manager.discardStagedFiles([item])
-                                        stagedLibraries.removeAll { $0.id == item.id }
+                                        draft.libraries.removeAll { $0.id == item.id }
                                     } label: { Image(systemName:"xmark.circle.fill") }
                                 }
                             }
@@ -808,26 +837,72 @@ struct AppsScreen: View {
                                 title:stagedLibraries.isEmpty ? "Publish Original IPA" : "Inject Dylibs & Publish",
                                 symbol:"arrow.up.doc.fill"
                             ) {
-                                guard let ipa = stagedIPA else { return }
-                                if manager.publishSelectedIPA(ipa,libraries:stagedLibraries,publishedName:publicationBaseName) {
-                                    stagedIPA = nil
-                                    stagedLibraries = []
-                                    publicationBaseName = ""
+                                guard let ipa = draft.ipa else { return }
+                                if manager.publishSelectedIPA(ipa,libraries:draft.libraries,publishedName:draft.filename) {
+                                    draft.clearWithoutDeleting()
                                 }
                             }
                             .disabled(manager.busy || !manager.connected)
                             Button("Cancel selection",role:.cancel) {
-                                if let ipa = stagedIPA {
-                                    manager.discardStagedFiles([ipa] + stagedLibraries)
+                                if let ipa = draft.ipa {
+                                    manager.discardStagedFiles([ipa] + draft.libraries)
                                 }
-                                stagedIPA = nil
-                                stagedLibraries = []
-                                publicationBaseName = ""
+                                draft.clearWithoutDeleting()
                             }.font(.caption)
                         }
                     }
                 }
                 .listRowBackground(Color.white.opacity(0.055))
+                Section("Dylib Storage") {
+                    HStack {
+                        Label("\(vault.items.count) saved dylibs", systemImage:"externaldrive.fill")
+                        Spacer()
+                        Button { activePicker = .vaultImport } label: {
+                            Label("Import",systemImage:"plus")
+                        }.foregroundStyle(Theme.cyan)
+                    }
+                    if !vault.sharedContainerAvailable {
+                        Text("Storage is private to this app until RBx9 Signer and Source Manager are both signed with the same App Group entitlement. You can import Signer dylibs through Files.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    if vault.items.isEmpty {
+                        Text("No stored dylibs yet. Add them from Files or an IPA draft.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    ForEach(vault.items) { saved in
+                        HStack {
+                            Image(systemName:"puzzlepiece.fill").foregroundStyle(Theme.cyan)
+                            VStack(alignment:.leading) {
+                                Text(saved.name).font(.subheadline)
+                                Text(ByteCountFormatter.string(fromByteCount:saved.byteCount,countStyle:.file))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button {
+                                renameDylib = saved
+                                renameDylibText = (saved.name as NSString).deletingPathExtension
+                            } label: { Image(systemName:"pencil") }
+                                .buttonStyle(.borderless)
+                            Button {
+                                if let draftIPA = draft.ipa {
+                                    _ = draftIPA
+                                    if draft.libraries.contains(where:{$0.name.lowercased() == saved.name.lowercased()}) {
+                                        manager.alertMessage = "This dylib is already selected."
+                                    } else if draft.libraries.count < 16,
+                                              let item = manager.stageSelectedFile(saved.url,expected:"dylib") {
+                                        draft.libraries.append(item)
+                                    }
+                                } else {
+                                    manager.alertMessage = "Select an IPA first to add a stored dylib."
+                                }
+                            } label: { Image(systemName:"plus.circle") }
+                                .buttonStyle(.borderless)
+                            Button(role:.destructive) { deleteDylib = saved } label: {
+                                Image(systemName:"trash")
+                            }.buttonStyle(.borderless)
+                        }
+                    }
+                }
                 Section("Published applications") {
                     ForEach(manager.apps) { app in
                         NavigationLink {
@@ -875,49 +950,81 @@ struct AppsScreen: View {
                         .disabled(manager.busy)
                 }
             }
-            // ESign IPA files normally have a dynamic UTType. Selecting all Files
-            // items avoids iOS graying out .ipa files in the Files document picker.
-            .sheet(isPresented:$importer) {
+            // One modal host prevents the IPA draft from disappearing when
+            // dismissing the IPA picker and presenting the dylib picker.
+            .sheet(item:$activePicker, onDismiss:{ vault.refresh() }) { kind in
                 PackageDocumentPicker(
-                    multiple:false,
+                    kind: kind == .ipa ? .ipa : .dylib,
+                    multiple:kind != .ipa,
                     onPick: { urls in
-                        guard let url = urls.first else { importer = false; return }
-                        if let previous = stagedIPA {
-                            manager.discardStagedFiles([previous] + stagedLibraries)
-                            stagedLibraries = []
+                        switch kind {
+                        case .ipa:
+                            if let url = urls.first {
+                                let newFile = manager.stageSelectedFile(url,expected:"ipa")
+                                if let newFile {
+                                    if let previous = draft.ipa {
+                                        manager.discardStagedFiles([previous] + draft.libraries)
+                                    }
+                                    draft.ipa = newFile
+                                    draft.libraries = []
+                                    draft.filename = (newFile.name as NSString).deletingPathExtension
+                                }
+                            }
+                        case .dylib:
+                            for url in urls {
+                                guard draft.libraries.count < 16 else {
+                                    manager.alertMessage = "You can add up to 16 dylibs."
+                                    break
+                                }
+                                guard let item = manager.stageSelectedFile(url,expected:"dylib") else { continue }
+                                if draft.libraries.contains(where:{$0.name.lowercased() == item.name.lowercased()}) {
+                                    manager.discardStagedFiles([item])
+                                    manager.alertMessage = "Duplicate dylib: \(item.name)"
+                                } else {
+                                    draft.libraries.append(item)
+                                    // Keep the original IPA draft untouched.
+                                    do { _ = try vault.save(item.url) } catch { /* storage is optional */ }
+                                }
+                            }
+                        case .vaultImport:
+                            for url in urls {
+                                guard let file = manager.stageSelectedFile(url,expected:"dylib") else { continue }
+                                do {
+                                    _ = try vault.save(file.url)
+                                } catch { manager.alertMessage = error.localizedDescription }
+                                manager.discardStagedFiles([file])
+                            }
                         }
-                        stagedIPA = manager.stageSelectedFile(url,expected:"ipa")
-                        if let ipa = stagedIPA {
-                            publicationBaseName = (ipa.name as NSString).deletingPathExtension
-                        }
-                        importer = false
+                        activePicker = nil
                     },
-                    onCancel: { importer = false }
+                    onCancel: { activePicker = nil }
                 )
             }
-            .sheet(isPresented:$libraryImporter) {
-                PackageDocumentPicker(
-                    multiple:true,
-                    onPick: { urls in
-                        for url in urls {
-                            guard stagedLibraries.count < 16 else {
-                                manager.alertMessage = "You can add up to 16 dylibs."
-                                break
-                            }
-                            guard let staged = manager.stageSelectedFile(url,expected:"dylib") else {
-                                continue
-                            }
-                            if stagedLibraries.contains(where: { $0.name.lowercased() == staged.name.lowercased() }) {
-                                manager.discardStagedFiles([staged])
-                                manager.alertMessage = "Duplicate dylib: \(staged.name)"
-                            } else {
-                                stagedLibraries.append(staged)
-                            }
-                        }
-                        libraryImporter = false
-                    },
-                    onCancel: { libraryImporter = false }
-                )
+            .onAppear { vault.refresh() }
+            .alert("Rename dylib",isPresented:Binding(
+                get:{renameDylib != nil},set:{if !$0 {renameDylib=nil}}
+            )) {
+                TextField("Dylib name",text:$renameDylibText)
+                Button("Save") {
+                    if let item = renameDylib {
+                        do { try vault.rename(item,to:renameDylibText) }
+                        catch { manager.alertMessage = error.localizedDescription }
+                    }
+                    renameDylib = nil
+                }
+                Button("Cancel",role:.cancel) { renameDylib=nil }
+            }
+            .confirmationDialog("Delete saved dylib?",isPresented:Binding(
+                get:{deleteDylib != nil},set:{if !$0 {deleteDylib=nil}}
+            ),titleVisibility:.visible) {
+                Button("Delete saved copy",role:.destructive) {
+                    if let item = deleteDylib {
+                        do { try vault.remove(item) }
+                        catch { manager.alertMessage = error.localizedDescription }
+                    }
+                    deleteDylib = nil
+                }
+                Button("Cancel",role:.cancel) { deleteDylib=nil }
             }
             .confirmationDialog("Remove \(pendingDelete?.name ?? "app")?",
                 isPresented:Binding(get:{pendingDelete != nil},set:{if !$0 {pendingDelete=nil}}),
@@ -1089,7 +1196,7 @@ struct DebsScreen: View {
             }
             .sheet(isPresented:$importer) {
                 PackageDocumentPicker(
-                    multiple:false,
+                    kind:.deb, multiple:false,
                     onPick: { urls in
                         if let url = urls.first {
                             if let previous = stagedDEB { manager.discardStagedFiles([previous]) }
