@@ -360,7 +360,8 @@ struct Theme {
     static let background = Color(red:0.045,green:0.065,blue:0.11)
 }
 struct Panel<Content:View>:View {
-    @ViewBuilder let content:Content
+    let content:Content
+    init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body:some View {
         VStack(alignment:.leading,spacing:13) { content }
             .padding(17).frame(maxWidth:.infinity,alignment:.leading)
