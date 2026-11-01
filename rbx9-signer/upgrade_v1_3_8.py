@@ -134,7 +134,7 @@ helpers = """
     private func _rbx9SelectFromStorage(_ url: URL) {
         guard !_rbx9IsSelected(url) else { return }
         options.injectionFiles.append(url)
-        _showRBx9ApplyConfirmation = true
+        // The persistent Quick Editor action bar performs re-sign and install.
     }
 """
 s = s.replace(needle, "\n" + helpers + needle, 1)
