@@ -887,9 +887,6 @@ struct AppsScreen: View {
                             stagedLibraries = []
                         }
                         stagedIPA = manager.stageSelectedFile(url,expected:"ipa")
-                        publicationBaseName = stagedIPA?.name.replacingOccurrences(
-                            of:".ipa",with:"",options:[.caseInsensitive,.anchored],range:nil
-                        ) ?? ""
                         if let ipa = stagedIPA {
                             publicationBaseName = (ipa.name as NSString).deletingPathExtension
                         }
