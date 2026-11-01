@@ -83,11 +83,19 @@ final class GitHubManager: ObservableObject {
     @Published var ipaIconURL = "https://rbx9.github.io/icon.png"
     @Published var sileoIconURL = "https://rbx9.github.io/CydiaIcon.png"
     @Published var alertMessage: String? = nil
+    @Published var uploadFraction: Double? = nil
+    @Published var uploadSummary = ""
+    @Published var uploadRemainder = ""
     @Published var hiddenBundles: Set<String> = []
     private var token = SecretStore.read()
 
     init() {
-        if !token.isEmpty { Task { await refresh() } }
+        if !token.isEmpty {
+            Task {
+                await refresh()
+                await resumePendingPublicationIfNeeded()
+            }
+        }
     }
     var connected: Bool { !token.isEmpty && !username.isEmpty }
     private func json(_ value: Any) throws -> Data {
@@ -369,7 +377,7 @@ final class GitHubManager: ObservableObject {
         }
         let scope = url.startAccessingSecurityScopedResource()
         defer { if scope { url.stopAccessingSecurityScopedResource() } }
-        let target = FileManager.default.temporaryDirectory
+        let target = RBx9PendingUploadStore.directory
             .appendingPathComponent("rbx9-staged-\(UUID().uuidString).\(expected)")
         do {
             var coordError: NSError?
@@ -437,20 +445,92 @@ final class GitHubManager: ObservableObject {
             return false
         }
     }
-    private func uploadReleaseAsset(_ path:URL, name:String, releaseID:Int) async throws {
-        var parts = URLComponents(string:"https://uploads.github.com/repos/\(repository)/releases/\(releaseID)/assets")!
-        parts.queryItems = [URLQueryItem(name:"name",value:name)]
-        var request = URLRequest(url:parts.url!)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)",forHTTPHeaderField:"Authorization")
-        request.setValue("application/vnd.github+json",forHTTPHeaderField:"Accept")
-        request.setValue("application/octet-stream",forHTTPHeaderField:"Content-Type")
-        request.setValue("2022-11-28",forHTTPHeaderField:"X-GitHub-Api-Version")
-        let (responseData,response) = try await URLSession.shared.upload(for:request,fromFile:path)
-        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200...299).contains(statusCode) else {
-            let msg = (try? parse(responseData)["message"] as? String) ?? String(decoding:responseData,as:UTF8.self)
-            throw ManagerError.message("Upload failed (\(statusCode)): \(msg.prefix(240))")
+    private func isOfflineError(_ error:Error) -> Bool {
+        let code = (error as? URLError)?.code
+        return code == .notConnectedToInternet || code == .networkConnectionLost ||
+            code == .timedOut || code == .cannotConnectToHost ||
+            code == .cannotFindHost || code == .dnsLookupFailed ||
+            code == .internationalRoamingOff || code == .dataNotAllowed
+    }
+    private func progressUpdate(sent:Int64,total:Int64,eta:Double?) {
+        guard total > 0 else { return }
+        uploadFraction = min(1,max(0,Double(sent)/Double(total)))
+        let mb = 1_048_576.0
+        uploadSummary = String(format:"%.1f / %.1f MB uploaded",Double(sent)/mb,Double(total)/mb)
+        let remaining = max(0,total-sent)
+        let timeText:String
+        if let eta,eta.isFinite {
+            let seconds = Int(min(eta,Double(Int.max)/2))
+            timeText = seconds >= 3600 ? String(format:"~%dh %dm",seconds/3600,seconds%3600/60) :
+                seconds >= 60 ? String(format:"~%dm %ds",seconds/60,seconds%60) :
+                "~\(seconds)s"
+        } else {
+            timeText = "Calculating time…"
+        }
+        uploadRemainder = String(format:"%.1f MB left · %@",Double(remaining)/mb,timeText)
+    }
+    private func existingAsset(releaseID:Int,name:String) async -> [String:Any]? {
+        guard let data = try? await api("GET","/repos/\(repository)/releases/\(releaseID)/assets?per_page=100"),
+              let results = try? JSONSerialization.jsonObject(with:data) as? [[String:Any]] else {
+            return nil
+        }
+        return results.first(where:{$0["name"] as? String == name &&
+                        $0["state"] as? String == "uploaded"})
+    }
+    private func uploadReleaseAsset(_ path:URL,name:String,releaseID:Int) async throws -> [String:Any] {
+        let localSize = (try? path.resourceValues(forKeys:[.fileSizeKey]))?.fileSize ?? 0
+        var retries = 0
+        while true {
+            if let uploaded = await existingAsset(releaseID:releaseID,name:name) {
+                guard uploaded["size"] as? Int == localSize else {
+                    throw ManagerError.message("An uploaded asset already uses \(name) but has a different size.")
+                }
+                uploadFraction = 1
+                uploadSummary = "File already uploaded"
+                uploadRemainder = "0 MB left"
+                return uploaded
+            }
+            var parts=URLComponents(string:"https://uploads.github.com/repos/\(repository)/releases/\(releaseID)/assets")!
+            parts.queryItems=[URLQueryItem(name:"name",value:name)]
+            var req=URLRequest(url:parts.url!)
+            req.httpMethod="POST"
+            req.setValue("Bearer \(token)",forHTTPHeaderField:"Authorization")
+            req.setValue("application/vnd.github+json",forHTTPHeaderField:"Accept")
+            req.setValue("application/octet-stream",forHTTPHeaderField:"Content-Type")
+            req.setValue("2022-11-28",forHTTPHeaderField:"X-GitHub-Api-Version")
+            uploadFraction = 0
+            uploadSummary = String(format:"0 / %.1f MB uploaded",Double(localSize)/1_048_576)
+            uploadRemainder = "Calculating remaining time…"
+            do {
+                let (data,response) = try await RBx9UploadTransport.shared.upload(
+                    request:req,fromFile:path,
+                    onProgress:{ [weak self] sent,total,eta in
+                        Task { @MainActor [weak self] in
+                            self?.progressUpdate(sent:sent,total:total,eta:eta)
+                        }
+                    }
+                )
+                let code=(response as? HTTPURLResponse)?.statusCode ?? 0
+                if (200...299).contains(code) { return try parse(data) }
+                if code == 422, let existing = await existingAsset(releaseID:releaseID,name:name) {
+                    if existing["size"] as? Int == localSize { return existing }
+                }
+                if [429,500,502,503,504].contains(code) {
+                    retries += 1
+                    status = "GitHub is temporarily unavailable. Retrying upload automatically…"
+                    try await Task.sleep(nanoseconds:UInt64(min(30,3*retries))*1_000_000_000)
+                    continue
+                }
+                throw ManagerError.message("Upload failed (HTTP \(code)): \(String(decoding:data,as:UTF8.self).prefix(200))")
+            } catch {
+                guard isOfflineError(error) else { throw error }
+                retries += 1
+                status = "Connection lost. Your IPA is safely saved; waiting and retrying…"
+                uploadRemainder = "Will retry when internet returns"
+                try await Task.sleep(nanoseconds:UInt64(min(30,3*retries))*1_000_000_000)
+                // GitHub does not support partial release-asset resumes.
+                // The background task or next attempt can re-transfer this file.
+            }
         }
     }
     private func uploadInjectedIPA(_ ipa:StagedSourceFile, libraries:[StagedSourceFile], outputName:String) async {
@@ -480,11 +560,11 @@ final class GitHubManager: ObservableObject {
                 throw ManagerError.message("Could not create GitHub release")
             }
             status = "Uploading original IPA…"
-            try await uploadReleaseAsset(ipa.url,name:"original-ipa.upload",releaseID:id)
-            try await uploadReleaseAsset(metadata,name:"publish-name.txt",releaseID:id)
+            _ = try await uploadReleaseAsset(ipa.url,name:"original-ipa.upload",releaseID:id)
+            _ = try await uploadReleaseAsset(metadata,name:"publish-name.txt",releaseID:id)
             for (index,lib) in libraries.enumerated() {
                 status = "Uploading dylib \(index + 1)/\(libraries.count)…"
-                try await uploadReleaseAsset(lib.url,name:lib.name,releaseID:id)
+                _ = try await uploadReleaseAsset(lib.url,name:lib.name,releaseID:id)
             }
             status = "Starting verified dylib packaging…"
             _ = try await api("PATCH","/repos/\(repository)/releases/\(id)",body:try json(["draft":false]))
@@ -495,80 +575,89 @@ final class GitHubManager: ObservableObject {
             alertMessage = error.localizedDescription
         }
     }
-    func importFile(_ url: URL, sileo: Bool) {
+    func importFile(_ url:URL,sileo:Bool) {
         guard !busy else { alertMessage = "Please complete the current upload first."; return }
         guard let file = stageSelectedFile(url,expected:sileo ? "deb" : "ipa") else { return }
-        Task { await upload(stagedFile:file.url, originalName:file.name, sileo:sileo) }
+        Task { await upload(stagedFile:file.url,originalName:file.name,sileo:sileo) }
     }
-    private func upload(stagedFile:URL, originalName:String, sileo:Bool) async {
-        guard !busy else {
-            try? FileManager.default.removeItem(at:stagedFile)
+    private func resumePendingPublicationIfNeeded() async {
+        guard !busy,let job = RBx9PendingUploadStore.load() else { return }
+        let staged=URL(fileURLWithPath:job.stagedPath)
+        guard FileManager.default.fileExists(atPath:staged.path) else {
+            RBx9PendingUploadStore.clear()
             return
         }
-        busy = true
+        status = "Resuming saved upload \(job.filename)…"
+        await upload(stagedFile:staged,originalName:job.filename,sileo:job.sileo)
+    }
+    private func upload(stagedFile:URL,originalName:String,sileo:Bool) async {
+        guard !busy else { return }
+        busy=true
+        var succeeded=false
         defer {
-            busy = false
-            try? FileManager.default.removeItem(at:stagedFile)
+            busy=false
+            if succeeded {
+                RBx9PendingUploadStore.clear()
+                try? FileManager.default.removeItem(at:stagedFile)
+            }
         }
         do {
-            let ext = sileo ? "deb" : "ipa"
-            status = "Preparing \(ext.uppercased()) upload…"
-            let sanitized = originalName
-                .replacingOccurrences(of:"[^a-zA-Z0-9._-]",with:"-",options:.regularExpression)
-            guard sanitized.lowercased().hasSuffix(".\(ext)") else {
-                throw ManagerError.message("Invalid \(ext.uppercased()) filename")
+            let ext=sileo ? "deb" : "ipa"
+            let name=try checkedPublicationName(originalName,ext:ext)
+            var job = RBx9PendingUploadStore.load()
+            if job?.stagedPath != stagedFile.path {
+                job = RBx9PendingPublication(stagedPath:stagedFile.path,filename:name,
+                    sileo:sileo,releaseID:nil,completedAssetURL:nil)
+                try RBx9PendingUploadStore.save(job!)
             }
-            let tag = "source-manager-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8))"
-            // A draft prevents the IPA indexing workflow from importing an
-            // incomplete release that does not have its binary asset yet.
-            let draft = try parse(try await api("POST","/repos/\(repository)/releases",body:try json([
-                "tag_name":tag, "name":sanitized,
-                "body":"Uploaded using RBx9 Source Manager",
-                "draft":true, "prerelease":false
-            ])))
-            guard let id = draft["id"] as? Int else {
-                throw ManagerError.message("GitHub did not create a draft release")
-            }
-            status = "Uploading \(sanitized)…"
-            var components = URLComponents(string:"https://uploads.github.com/repos/\(repository)/releases/\(id)/assets")!
-            components.queryItems = [URLQueryItem(name:"name",value:sanitized)]
-            var req = URLRequest(url:components.url!)
-            req.httpMethod = "POST"
-            req.setValue("Bearer \(token)",forHTTPHeaderField:"Authorization")
-            req.setValue("application/vnd.github+json",forHTTPHeaderField:"Accept")
-            req.setValue("application/octet-stream",forHTTPHeaderField:"Content-Type")
-            req.setValue("2022-11-28",forHTTPHeaderField:"X-GitHub-Api-Version")
-            let (uploadData,response) = try await URLSession.shared.upload(for:req,fromFile:stagedFile)
-            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-            guard (200...299).contains(code) else {
-                throw ManagerError.message("Upload failed (\(code)): \(String(decoding:uploadData,as:UTF8.self).prefix(250))")
-            }
-            let asset = try parse(uploadData)
-            guard let downloadURL = asset["browser_download_url"] as? String else {
-                throw ManagerError.message("GitHub did not return an asset URL")
-            }
-            status = "Publishing GitHub release…"
-            _ = try await api("PATCH","/repos/\(repository)/releases/\(id)",body:try json(["draft":false]))
-            // Publish the binary before adding its URL to the Sileo index,
-            // otherwise the builder may try to download a private draft.
-            if sileo {
-                status = "Adding DEB to Sileo package index…"
-                let sha256 = try fileHash(stagedFile)
-                let (source, _) = try await file("package-sources.txt")
-                let old = String(decoding:source,as:UTF8.self).trimmingCharacters(in:.newlines)
-                let row = "\(downloadURL)|\(sanitized)|\(sha256)"
-                guard !old.contains(row) else {
-                    throw ManagerError.message("This package is already in the source")
+            guard var active=job else { throw ManagerError.message("Could not save upload queue") }
+            if active.releaseID == nil {
+                status="Creating GitHub draft release…"
+                let tag="source-manager-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8))"
+                let response=try parse(try await api("POST","/repos/\(repository)/releases",
+                    body:try json(["tag_name":tag,"name":name,
+                                   "body":"Uploaded using RBx9 Source Manager",
+                                   "draft":true,"prerelease":false])))
+                guard let id=response["id"] as? Int else {
+                    throw ManagerError.message("Could not create draft release")
                 }
-                try await put("package-sources.txt",data:Data((old+"\n"+row+"\n").utf8))
+                active.releaseID=id
+                try RBx9PendingUploadStore.save(active)
             }
+            guard let releaseID=active.releaseID else { throw ManagerError.message("Missing release ID") }
+            if active.completedAssetURL == nil {
+                status="Uploading \(name)…"
+                let asset=try await uploadReleaseAsset(stagedFile,name:name,releaseID:releaseID)
+                guard let url=asset["browser_download_url"] as? String else {
+                    throw ManagerError.message("GitHub did not return the uploaded file URL")
+                }
+                active.completedAssetURL=url
+                try RBx9PendingUploadStore.save(active)
+            }
+            guard let downloadURL=active.completedAssetURL else { throw ManagerError.message("No download URL") }
+            status="Finalizing source update…"
+            if sileo {
+                let sha=try fileHash(stagedFile)
+                let (source,_)=try await file("package-sources.txt")
+                let lines=String(decoding:source,as:UTF8.self)
+                let row="\(downloadURL)|\(name)|\(sha)"
+                if !lines.contains(row) {
+                    let updated=lines.trimmingCharacters(in:.newlines)+"\n"+row+"\n"
+                    try await put("package-sources.txt",data:Data(updated.utf8))
+                }
+            }
+            _=try await api("PATCH","/repos/\(repository)/releases/\(releaseID)",body:try json(["draft":false]))
+            succeeded=true
+            uploadFraction=1
+            uploadRemainder="0 MB left · Upload complete"
             await refresh()
-            status = "Uploaded successfully. Source publishing is running; refresh your client when finished."
+            status="Uploaded successfully. GitHub Actions is updating the source."
         } catch {
-            status = error.localizedDescription
-            alertMessage = error.localizedDescription
+            status=error.localizedDescription
+            alertMessage="Upload paused: \(error.localizedDescription). The file is retained for recovery after reconnecting or reopening the app."
         }
     }
+
 }
 
 struct Theme {
@@ -686,18 +775,30 @@ struct SourceHeader: View {
     }
 }
 struct StatusPanel: View {
-    @EnvironmentObject var manager: GitHubManager
-    var body: some View {
+    @EnvironmentObject var manager:GitHubManager
+    var body:some View {
         Group {
             if manager.busy || !manager.status.isEmpty {
-                HStack(spacing: 10) {
-                    if manager.busy { ProgressView().tint(Theme.cyan) }
-                    Text(manager.status.isEmpty ? "Working…" : manager.status)
-                        .font(.caption).foregroundStyle(.primary)
-                    Spacer(minLength: 0)
+                VStack(alignment:.leading,spacing:7) {
+                    HStack(spacing:9) {
+                        if manager.busy { ProgressView().tint(Theme.cyan) }
+                        Text(manager.status.isEmpty ? "Working…" : manager.status)
+                            .font(.caption).foregroundStyle(.primary)
+                        Spacer(minLength:0)
+                    }
+                    if let fraction = manager.uploadFraction {
+                        ProgressView(value:fraction,total:1)
+                            .tint(Theme.cyan)
+                        HStack {
+                            Text(manager.uploadSummary)
+                            Spacer()
+                            Text(manager.uploadRemainder)
+                        }
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    }
                 }
-                .padding(12)
-                .background(.regularMaterial)
+                .padding(12).background(.regularMaterial)
             }
         }
     }
