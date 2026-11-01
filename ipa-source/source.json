@@ -107,40 +107,40 @@
       "category": "utilities",
       "versions": [
         {
-          "version": "1.3.12",
           "buildVersion": "1",
           "date": "2026-11-01T09:46:47Z",
           "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.12/RBx9-v1.3.12-unsigned.ipa",
-          "size": 20212032,
+          "localizedDescription": "RBx9 v1.3.12: streamlined Dylib Storage, swipe left to delete, long press to export or rename. Preserves previous launch improvements and signing functionality.",
           "minOSVersion": "16.0",
-          "localizedDescription": "RBx9 v1.3.12: streamlined Dylib Storage, swipe left to delete, long press to export or rename. Preserves previous launch improvements and signing functionality."
+          "size": 20212032,
+          "version": "1.3.12"
         },
         {
-          "version": "1.3.11",
           "buildVersion": "1",
           "date": "2026-11-01T07:53:01Z",
           "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.11/RBx9-v1.3.11-unsigned.ipa",
-          "size": 20212907,
+          "localizedDescription": "RBx9 v1.3.11: one RBx9-branded iOS launch storyboard instead of Feather Glyph; no separate startup animation.",
           "minOSVersion": "16.0",
-          "localizedDescription": "RBx9 v1.3.11: one RBx9-branded iOS launch storyboard instead of Feather Glyph; no separate startup animation."
+          "size": 20212907,
+          "version": "1.3.11"
         },
         {
-          "version": "1.3.10",
           "buildVersion": "1",
           "date": "2026-11-01T04:00:33Z",
           "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.10/RBx9-v1.3.10-unsigned.ipa",
-          "size": 19684479,
+          "localizedDescription": "RBx9 v1.3.10: removes old animated transmission startup and artificial launch delay; retains Dylib Storage and import/export.",
           "minOSVersion": "16.0",
-          "localizedDescription": "RBx9 v1.3.10: removes old animated transmission startup and artificial launch delay; retains Dylib Storage and import/export."
+          "size": 19684479,
+          "version": "1.3.10"
         },
         {
-          "version": "1.3.9",
           "buildVersion": "1",
           "date": "2026-11-01T03:33:48Z",
           "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.9/RBx9-v1.3.9-unsigned.ipa",
-          "size": 20228783,
+          "localizedDescription": "RBx9 v1.3.9: rename saved dylibs, export through Share Sheet or Files and import .dylib/.deb with duplicate protection.",
           "minOSVersion": "16.0",
-          "localizedDescription": "RBx9 v1.3.9: rename saved dylibs, export through Share Sheet or Files and import .dylib/.deb with duplicate protection."
+          "size": 20228783,
+          "version": "1.3.9"
         },
         {
           "buildVersion": "1",
@@ -265,7 +265,7 @@
       "bundleIdentifier": "com.google.ios.youtube",
       "developerName": "RBx9",
       "subtitle": "YouTubePlus · sideloadable YouTube",
-      "localizedDescription": "Available in the RBx9 IPA Library.",
+      "localizedDescription": "Modifed youtube",
       "iconURL": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/82/43/be/8243be7f-17c3-33ae-720a-ffcde48bed61/logo_youtube_2024_q4_color-0-0-1x_U007emarketing-0-0-0-7-0-0-0-85-220.png/512x512bb.jpg",
       "tintColor": "#739AF5",
       "category": "photo-video",
