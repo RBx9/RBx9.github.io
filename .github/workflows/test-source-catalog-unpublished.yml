@@ -29,6 +29,10 @@ jobs:
       - name: Verify catalog updater and clean rebase without pushing
         run: |
           set -euo pipefail
+          # Reproduce the production workflow's checkout of main, not the
+          # development feature branch (which cannot be rebased onto main).
+          git fetch origin main
+          git switch -c test-publication origin/main
           python3 ipa-source/scripts/repo_manager.py add \
             --ipa "$RUNNER_TEMP/RouterPulse.ipa" \
             --url 'https://github.com/RBx9/RBx9.github.io/releases/download/source-manager-1793518656-7A56CDC6/RouterPulse.ipa' \
