@@ -90,6 +90,7 @@ struct RBx9PendingPublication: Codable {
     var sileo:Bool
     var releaseID:Int?
     var completedAssetURL:String?
+    var tag:String?
 }
 
 enum RBx9PendingUploadStore {
