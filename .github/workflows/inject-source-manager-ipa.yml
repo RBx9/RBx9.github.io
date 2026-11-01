@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -37,7 +39,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/staged"
           gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/staged" \
-            --pattern 'original-ipa.upload' --pattern '*.dylib'
+            --pattern 'original-ipa.upload' --pattern '*.dylib' --pattern 'publish-name.txt'
           test -s "$RUNNER_TEMP/staged/original-ipa.upload"
           find "$RUNNER_TEMP/staged" -maxdepth 1 -name '*.dylib' -print | grep -q .
       - name: Repackage and verify injected IPA
@@ -51,8 +53,17 @@ jobs:
             test -s "$file"
             args+=(--library "$file")
           done
-          output="$RUNNER_TEMP/RBx9-Injected-${RELEASE_TAG}.ipa"
-          python source-manager/scripts/prepare_injected_ipa.py \
+          if [[ -s "$RUNNER_TEMP/staged/publish-name.txt" ]]; then
+            output_name="$(tr -d '\r\n' < "$RUNNER_TEMP/staged/publish-name.txt")"
+          else
+            output_name="RBx9-Injected-${RELEASE_TAG}.ipa"
+          fi
+          if [[ ! "$output_name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,200}\.ipa$ ]] || [[ "$output_name" == *..* ]]; then
+            echo "Invalid output IPA filename" >&2
+            exit 1
+          fi
+          output="$RUNNER_TEMP/$output_name"
+          python .github/scripts/rbx9_prepare_injected_ipa.py \
             --ipa "$RUNNER_TEMP/staged/original-ipa.upload" \
             "${args[@]}" --output "$output"
           unzip -tq "$output"
@@ -63,7 +74,12 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
         run: |
           set -euo pipefail
-          gh release upload "$RELEASE_TAG" "$OUTPUT_IPA"
+          output_name="$(basename "$OUTPUT_IPA")"
+          if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fxq "$output_name"; then
+            echo "Verified output already attached: $output_name"
+          else
+            gh release upload "$RELEASE_TAG" "$OUTPUT_IPA"
+          fi
           # The release's published event starts before the injection result
           # exists, so explicitly rebuild the ESign source afterward.
           gh workflow run build-ipa-source.yml \
