@@ -1,0 +1,86 @@
+name: Validate RBx9 IPA Injection (Unpublished)
+
+on:
+  push:
+    branches:
+      - fix/source-manager-dylib-injection-no-publish
+    paths:
+      - 'source-manager/scripts/prepare_injected_ipa.py'
+      - '.github/workflows/test-source-manager-injection-unpublished.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Create isolated Python test environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/inject-venv"
+          "$RUNNER_TEMP/inject-venv/bin/python" -m pip install 'lief==0.17.6'
+      - name: Build an arm64 iOS test dylib
+        run: |
+          set -euo pipefail
+          printf '%s\n' 'int rbx9_injection_validation(void) { return 9; }' > "$RUNNER_TEMP/test.c"
+          xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=16.0 \
+            -dynamiclib -o "$RUNNER_TEMP/RBx9Test.dylib" "$RUNNER_TEMP/test.c"
+      - name: Fetch previously published unsigned IPA solely as a test fixture
+        run: |
+          set -euo pipefail
+          curl -fLSs --retry 4 --connect-timeout 15 \
+            'https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-source-manager-v1.1.1/RBx9SourceManager-v1.1.1-unsigned.ipa' \
+            -o "$RUNNER_TEMP/fixture.ipa"
+          unzip -tq "$RUNNER_TEMP/fixture.ipa"
+      - name: Inject and independently verify executable load commands
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/inject-venv/bin/python" source-manager/scripts/prepare_injected_ipa.py \
+            --ipa "$RUNNER_TEMP/fixture.ipa" \
+            --library "$RUNNER_TEMP/RBx9Test.dylib" \
+            --output "$RUNNER_TEMP/test-injected.ipa"
+          unzip -tq "$RUNNER_TEMP/test-injected.ipa"
+          "$RUNNER_TEMP/inject-venv/bin/python" - <<'PY'
+          import io, plistlib, zipfile, tempfile
+          from pathlib import Path
+          import lief
+          import os
+          archive = Path(os.environ["RUNNER_TEMP"]) / "test-injected.ipa"
+          with zipfile.ZipFile(archive) as z:
+              app_info = next(n for n in z.namelist() if n.startswith("Payload/") and n.endswith(".app/Info.plist"))
+              app_prefix = app_info.rsplit("Info.plist",1)[0]
+              plist = plistlib.loads(z.read(app_info))
+              executable = z.read(app_prefix + plist["CFBundleExecutable"])
+              dylib = z.read(app_prefix + "Frameworks/RBx9Test.dylib")
+              assert len(dylib) > 0
+          with tempfile.TemporaryDirectory() as d:
+              exe_file = Path(d) / "main"
+              exe_file.write_bytes(executable)
+              fat = lief.MachO.parse(str(exe_file))
+              assert fat is not None and fat.size > 0
+              target = "@executable_path/Frameworks/RBx9Test.dylib"
+              for i in range(fat.size):
+                  assert fat.at(i).find_library(target), "Missing load command"
+          print("PASS: Executable loads the embedded dylib")
+          PY
+      - name: Confirm duplicate dylibs fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if "$RUNNER_TEMP/inject-venv/bin/python" source-manager/scripts/prepare_injected_ipa.py \
+            --ipa "$RUNNER_TEMP/fixture.ipa" \
+            --library "$RUNNER_TEMP/RBx9Test.dylib" \
+            --library "$RUNNER_TEMP/RBx9Test.dylib" \
+            --output "$RUNNER_TEMP/invalid.ipa"; then
+            echo "ERROR: duplicate libraries were accepted" >&2
+            exit 1
+          fi
+          test ! -e "$RUNNER_TEMP/invalid.ipa"
+          echo "PASS: duplicate dylibs are rejected"
