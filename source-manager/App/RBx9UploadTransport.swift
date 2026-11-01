@@ -80,3 +80,33 @@ final class RBx9UploadTransport: NSObject, URLSessionDataDelegate, URLSessionTas
         else { completion.resume(throwing:URLError(.badServerResponse)) }
     }
 }
+
+
+/// Metadata is kept in Application Support, not temporary storage, so that
+/// relaunching after an interrupted transfer does not lose the upload queue.
+struct RBx9PendingPublication: Codable {
+    var stagedPath:String
+    var filename:String
+    var sileo:Bool
+    var releaseID:Int?
+    var completedAssetURL:String?
+}
+
+enum RBx9PendingUploadStore {
+    static var directory:URL {
+        let root = FileManager.default.urls(for:.applicationSupportDirectory,
+            in:.userDomainMask)[0].appendingPathComponent("RBx9Uploads",isDirectory:true)
+        try? FileManager.default.createDirectory(at:root,withIntermediateDirectories:true)
+        return root
+    }
+    private static var record:URL { directory.appendingPathComponent("pending.json") }
+    static func load() -> RBx9PendingPublication? {
+        guard let data = try? Data(contentsOf:record) else { return nil }
+        return try? JSONDecoder().decode(RBx9PendingPublication.self,from:data)
+    }
+    static func save(_ value:RBx9PendingPublication) throws {
+        let data=try JSONEncoder().encode(value)
+        try data.write(to:record,options:.atomic)
+    }
+    static func clear() { try? FileManager.default.removeItem(at:record) }
+}
