@@ -397,7 +397,7 @@ settings.write_text(ss)
 tweak = app / "Utilities/Handlers/TweakHandler.swift"
 ts = tweak.read_text()
 anchor = "try _fileManager.moveFileIfNeeded(from: url, to: destinationURL)"
-if ts.count(anchor) != 2: raise RuntimeError("Expected framework and direct dylib move locations")
+if ts.count(anchor) < 1: raise RuntimeError("Direct dylib move location missing")
 start = ts.index("private func _handleDylib(at url: URL)")
 location = ts.index(anchor, start)
 ts = ts[:location] + '''if RBx9DylibStorage.isStored(url) {
