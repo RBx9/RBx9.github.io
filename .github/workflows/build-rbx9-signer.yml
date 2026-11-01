@@ -71,8 +71,9 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_7.py
           python3 rbx9-signer/upgrade_v1_3_8.py
           python3 rbx9-signer/upgrade_v1_3_9.py
-          # The prior release removed RBx9's splash instead of Feather's launch glyph.
-          # Keep RBx9 1.3.7/1.3.8 overlay and only replace iOS launch storyboard.
+          # Remove the separate SwiftUI animation, then substitute RBx9
+          # in Feather's original iOS system launch storyboard.
+          python3 rbx9-signer/upgrade_v1_3_10.py
           python3 rbx9-signer/upgrade_v1_3_11.py
           grep -F 'func rename(_ item: RBx9StoredTweak' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'RBx9StoredTweakExportButton' feather/Feather/Views/Signing/SigningTweaksView.swift
@@ -80,9 +81,9 @@ jobs:
           grep -F 'Button("Save")' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'RBx9DylibStorage' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'Developing and Modification' feather/Feather/Views/Settings/About/AboutView.swift
-          grep -F 'rbx9ShowingStartup' feather/Feather/FeatherApp.swift
-          grep -F '230_000_000' feather/Feather/FeatherApp.swift
-          grep -F 'RBx9TransmissionStartup()' feather/Feather/FeatherApp.swift
+          ! grep -Fq 'rbx9ShowingStartup' feather/Feather/FeatherApp.swift
+          ! grep -Fq '230_000_000' feather/Feather/FeatherApp.swift
+          ! grep -Fq 'RBx9TransmissionStartup' feather/Feather/FeatherApp.swift
           ! grep -Fq 'image="Glyph"' "feather/Feather/Resources/Launch Screen.storyboard"
           grep -F 'image="RBx9LaunchIcon"' "feather/Feather/Resources/Launch Screen.storyboard"
           grep -F '<image name="RBx9LaunchIcon"' "feather/Feather/Resources/Launch Screen.storyboard"
@@ -175,7 +176,7 @@ jobs:
             gh release create "$TAG" "$IPA" --repo "$GH_REPO" \
               --target "$GITHUB_SHA" \
               --title "RBx9 Signer v1.3.11 (Unsigned IPA)" \
-              --notes "Feather's system launch screen now displays RBx9's icon on its branded dark background, then transitions to the short cyan RBx9 animation. No Feather glyph. All signing and Dylib Storage features retained. Existing injection and signing remain supported. Existing signing and reinstall workflows remain in place. Unsigned IPA for iOS 16+; sign with your own certificate. Based on Feather GPL-3.0; source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
+              --notes "One RBx9 branded iOS launch storyboard with the RBx9 icon on a dark background. No Feather glyph, no second animated startup, and no artificial delay. Signing and Dylib Storage are unchanged. Existing injection and signing remain supported. Existing signing and reinstall workflows remain in place. Unsigned IPA for iOS 16+; sign with your own certificate. Based on Feather GPL-3.0; source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
               --latest=false
           fi
 
@@ -190,7 +191,7 @@ jobs:
         run: |
           set -euo pipefail
           cd source-main
-          printf '%s\n' 'RBx9 v1.3.11: iOS system launch screen now uses RBx9 artwork instead of Feather Glyph, with fast RBx9 transmission animation afterward.' > ../rbx9-release-notes.txt
+          printf '%s\n' 'RBx9 v1.3.11: one RBx9-branded iOS launch storyboard instead of Feather Glyph; no separate startup animation.' > ../rbx9-release-notes.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           # Start over from fresh main on every retry; rebasing generated files
