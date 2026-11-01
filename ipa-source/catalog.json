@@ -95,11 +95,20 @@
     "category": "utilities",
     "developerName": "RBx9",
     "iconURL": "https://rbx9.github.io/icon.png",
-    "localizedDescription": "RBx9 Signer for iOS 16+, built from Feather under GPL-3.0. Import IPA files, manage signing certificates and provisioning profiles, edit injected dylibs, then re-sign and optionally reinstall the modified app. This release includes Import from Files and injection-focused progress labels. This IPA is unsigned and must be signed using your own certificate.",
+    "localizedDescription": "RBx9 Signer for iOS 16+. Import IPAs, save .dylib and .deb tweaks in persistent duplicate-free storage, reuse saved tweaks in the Quick Editor for app updates, re-sign and install modified IPAs, and open IPA files through supported iOS file-sharing flows. Based on Feather under GPL-3.0. Sign this unsigned IPA with your own certificate.",
     "name": "RBx9 Signer",
     "subtitle": "IPA signer, installer and dylib tweak editor",
     "tintColor": "#2DE2CF",
     "versions": [
+      {
+        "version": "1.3.8",
+        "buildVersion": "1",
+        "date": "2026-11-01T02:40:00Z",
+        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.8/RBx9-v1.3.8-unsigned.ipa",
+        "size": 20217493,
+        "minOSVersion": "16.0",
+        "localizedDescription": "RBx9 v1.3.8: persistent duplicate-free Dylib Storage in Settings and Quick Editor, reusable dylibs for IPA updates, IPA/AirDrop opening support, corrected About credit, and ultra-fast startup."
+      },
       {
         "buildVersion": "1",
         "date": "2026-11-01T02:09:14Z",
