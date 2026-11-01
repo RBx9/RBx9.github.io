@@ -15,6 +15,18 @@ CATALOG = BASE / "catalog.json"
 ROOT = "https://rbx9.github.io/ipa-source"
 ICON = "https://rbx9.github.io/icon.png"
 SOURCE_SETTINGS = BASE / "source-settings.json"
+HIDDEN_APPS = BASE / "hidden-apps.json"
+
+def hidden_apps():
+    try:
+        values = json.loads(HIDDEN_APPS.read_text(encoding="utf-8"))
+        return set(values) if isinstance(values, list) else set()
+    except FileNotFoundError:
+        return set()
+
+def save_hidden(values):
+    write(HIDDEN_APPS, sorted(values))
+
 
 def load():
     if not CATALOG.exists():
@@ -57,6 +69,10 @@ def add(args):
     if not args.url.startswith("https://") or not args.url.lower().endswith(".ipa"):
         raise ValueError("Provide a direct HTTPS .ipa asset URL")
     details = info_from_ipa(path)
+    hidden = hidden_apps()
+    if details["bundle"] in hidden:
+        hidden.remove(details["bundle"])
+        save_hidden(hidden)
     catalog = load()
     app = catalog.setdefault(details["bundle"], {
         "name": details["name"], "developerName": "RBx9",
@@ -162,7 +178,10 @@ def prune(args):
 
 def render():
     universal_apps = []
+    suppressed = hidden_apps()
     for bundle, meta in sorted(load().items(), key=lambda pair: pair[1].get("name", "").lower()):
+        if bundle in suppressed:
+            continue
         versions = sorted(meta.get("versions") or [], key=lambda v: v["date"], reverse=True)
         if not versions:
             continue
