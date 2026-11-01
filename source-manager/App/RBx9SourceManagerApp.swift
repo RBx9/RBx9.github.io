@@ -283,14 +283,29 @@ final class GitHubManager: ObservableObject {
         busy = false
     }
     func updateSourceMetadata(sileo:Bool,name:String,description:String) async {
-        await work("Saving source settings") {
+        let newName = name.trimmingCharacters(in:.whitespacesAndNewlines)
+        let newDescription = description.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard !newName.isEmpty else {
+            alertMessage = "Please enter a source name before saving."
+            return
+        }
+        guard !newDescription.isEmpty else {
+            alertMessage = "Please enter a description before saving."
+            return
+        }
+        await work("Saving \(sileo ? "Sileo" : "ESign") settings") {
             let path = sileo ? "sileo-settings.json" : "ipa-source/source-settings.json"
-            var obj: [String:Any] = [:]
-            if let (data,_) = try? await self.file(path) { obj = (try? self.parse(data)) ?? [:] }
-            obj["name"] = name
-            obj["description"] = description
+            let (data,_) = try await self.file(path)
+            var obj = try self.parse(data)
+            obj["name"] = newName
+            obj["description"] = newDescription
             try await self.put(path,data:try self.json(obj))
         }
+        if !status.hasPrefix("Saved to GitHub.") {
+            // work() already displayed the GitHub error
+            return
+        }
+        alertMessage = "\(sileo ? "Sileo" : "ESign") settings saved to GitHub. Allow GitHub Pages to publish, then refresh your source."
     }
     func updateSourceIcon(sileo:Bool,imageData:Data) async {
         await work("Uploading source icon") {
@@ -777,17 +792,11 @@ struct SettingsScreen:View {
     @State private var tokenInput = ""
     @State private var deviceCode:DeviceCode?
     @State private var runningLogin = false
-    @State private var ipaName = ""
-    @State private var ipaDescription = ""
-    @State private var sileoName = ""
-    @State private var sileoDescription = ""
-    @State private var photoIPA:PhotosPickerItem?
-    @State private var photoSileo:PhotosPickerItem?
     var body:some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment:.leading,spacing:17) {
-                    Header(title:"Settings",subtitle:"GitHub account & source appearance")
+                    Header(title:"Settings",subtitle:"GitHub account & source details")
                     Panel {
                         Label("GitHub connection",systemImage:"person.crop.circle.badge.checkmark").font(.headline)
                         if manager.connected {
@@ -822,51 +831,42 @@ struct SettingsScreen:View {
                     }
                     Panel {
                         Label("ESign source appearance",systemImage:"square.stack.3d.up.fill").font(.headline)
-                        TextField("Source name",text:$ipaName).textFieldStyle(.roundedBorder)
-                        TextField("Description",text:$ipaDescription,axis:.vertical).textFieldStyle(.roundedBorder)
-                        PhotosPicker(selection:$photoIPA,matching:.images) {
-                            Label("Change ESign source icon",systemImage:"photo.badge.plus").foregroundStyle(Theme.cyan)
+                        Text("Change the source icon by tapping its picture at the top of the ESign tab.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        TextField("Source name",text:$manager.ipaName).textFieldStyle(.roundedBorder)
+                        TextField("Description",text:$manager.ipaDescription,axis:.vertical).textFieldStyle(.roundedBorder)
+                        PrimaryButton(title:"Save ESign Changes",symbol:"checkmark.circle.fill") {
+                            Task { await manager.updateSourceMetadata(sileo:false,name:manager.ipaName,description:manager.ipaDescription) }
                         }
-                        PrimaryButton(title:"Save ESign appearance",symbol:"checkmark") {
-                            Task { await manager.updateSourceMetadata(sileo:false,name:ipaName,description:ipaDescription) }
-                        }
+                        .disabled(manager.busy || !manager.connected)
                     }
                     Panel {
                         Label("Sileo source appearance",systemImage:"shippingbox.fill").font(.headline)
-                        TextField("Source name",text:$sileoName).textFieldStyle(.roundedBorder)
-                        TextField("Description",text:$sileoDescription,axis:.vertical).textFieldStyle(.roundedBorder)
-                        PhotosPicker(selection:$photoSileo,matching:.images) {
-                            Label("Change Sileo source icon",systemImage:"photo.badge.plus").foregroundStyle(Theme.cyan)
+                        Text("Change the source icon by tapping its picture at the top of the Sileo tab.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        TextField("Source name",text:$manager.sileoName).textFieldStyle(.roundedBorder)
+                        TextField("Description",text:$manager.sileoDescription,axis:.vertical).textFieldStyle(.roundedBorder)
+                        PrimaryButton(title:"Save Sileo Changes",symbol:"checkmark.circle.fill") {
+                            Task { await manager.updateSourceMetadata(sileo:true,name:manager.sileoName,description:manager.sileoDescription) }
                         }
-                        PrimaryButton(title:"Save Sileo appearance",symbol:"checkmark") {
-                            Task { await manager.updateSourceMetadata(sileo:true,name:sileoName,description:sileoDescription) }
-                        }
+                        .disabled(manager.busy || !manager.connected)
                     }
                     Panel {
                         Label("Connected repository",systemImage:"point.3.connected.trianglepath.dotted").font(.headline)
                         Text(repository).font(.subheadline).foregroundStyle(.secondary)
                         Link("Open GitHub repository",destination:URL(string:"https://github.com/\(repository)")!)
-                        Button("Refresh now") { Task { await manager.refresh(); syncFields() } }.foregroundStyle(Theme.cyan)
+                        Button("Refresh now") { Task { await manager.refresh() } }.foregroundStyle(Theme.cyan)
                         if manager.busy { ProgressView().tint(Theme.cyan) }
                         if !manager.status.isEmpty { Text(manager.status).font(.caption).foregroundStyle(.secondary) }
                     }
                 }.padding()
             }.background(Theme.background)
-            .onAppear { syncFields() }
-            .onChange(of:photoIPA) { item in
-                guard let item else { return }
-                Task { if let data = try? await item.loadTransferable(type:Data.self) { await manager.updateSourceIcon(sileo:false,imageData:data) } }
-            }
-            .onChange(of:photoSileo) { item in
-                guard let item else { return }
-                Task { if let data = try? await item.loadTransferable(type:Data.self) { await manager.updateSourceIcon(sileo:true,imageData:data) } }
-            }
+            .alert("Source Manager",isPresented:Binding(
+                get:{manager.alertMessage != nil},
+                set:{if !$0 {manager.alertMessage=nil}}
+            )) {
+                Button("OK",role:.cancel) { manager.alertMessage=nil }
+            } message: { Text(manager.alertMessage ?? "") }
         }
-    }
-    private func syncFields() {
-        ipaName=manager.ipaName
-        ipaDescription=manager.ipaDescription
-        sileoName=manager.sileoName
-        sileoDescription=manager.sileoDescription
     }
 }
