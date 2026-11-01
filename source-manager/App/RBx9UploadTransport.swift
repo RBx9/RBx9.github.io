@@ -13,7 +13,10 @@ final class RBx9UploadTransport: NSObject, URLSessionDataDelegate, URLSessionTas
         )
         config.isDiscretionary = false
         config.sessionSendsLaunchEvents = true
-        config.timeoutIntervalForResource = 7 * 24 * 60 * 60
+        // A stalled final HTTP acknowledgment must not leave the bar at 100%.
+        // Timeout produces URLError.timedOut and the saved file auto-retries.
+        config.timeoutIntervalForRequest = 90
+        config.timeoutIntervalForResource = 30 * 60
         config.waitsForConnectivity = true
         return URLSession(configuration:config,delegate:self,delegateQueue:nil)
     }()
