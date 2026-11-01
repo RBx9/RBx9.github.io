@@ -263,6 +263,60 @@ private struct RBx9RenameSheet: View {
 }
 '''
 
+
+# Export uses the native iOS share sheet: Save to Files, AirDrop or other apps.
+# ShareLink receives the original stored file URL; we never move/delete it.
+replace_once(
+    '''                        Button { beginRename(item) } label: {
+                            Image(systemName: "pencil")
+                        }''',
+    '''                        RBx9StoredTweakExportButton(fileURL: item.url)
+                        Button { beginRename(item) } label: {
+                            Image(systemName: "pencil")
+                        }''',
+    "export action beside rename"
+)
+replace_once(
+    '''                    .contextMenu {
+                        Button { beginRename(item) } label: {''',
+    '''                    .contextMenu {
+                        ShareLink(item: item.url) {
+                            Label("Export", systemImage: "square.and.arrow.up")
+                        }
+                        Button { beginRename(item) } label: {''',
+    "export context action"
+)
+replace_once(
+    '''                Button { importing = true } label: {
+                    Image(systemName: "plus.circle.fill")
+                }
+                .accessibilityLabel("Import dylib")''',
+    '''                Button { importing = true } label: {
+                    Label("Import", systemImage: "square.and.arrow.down")
+                }
+                .accessibilityLabel("Import dylib or deb")''',
+    "explicit Import control"
+)
+replace_once(
+    '''Text("Saved files are reusable in the Quick Editor when updating any app. Removing a tweak from a signing queue does not delete it from storage.")''',
+    '''Text("Import .dylib or .deb files using the top Import button. Use Export to save a copy to Files, AirDrop it, or share it. Your stored original remains available in the Quick Editor.")''',
+    "import export description"
+)
+src += r'''
+
+// MARK: - Native iOS file export from stored tweak URL
+private struct RBx9StoredTweakExportButton: View {
+    let fileURL: URL
+    var body: some View {
+        ShareLink(item: fileURL) {
+            Image(systemName: "square.and.arrow.up")
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel("Export " + fileURL.lastPathComponent)
+    }
+}
+'''
+
 # Make former queued references to renamed paths visible when switching to
 # Quick Editor in same scene: selections remapped in OptionsManager on rename.
 swift.write_text(src)
