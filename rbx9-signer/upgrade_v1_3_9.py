@@ -117,7 +117,6 @@ replace_once(
     var body: some View {""",
     """    @State private var pendingDelete: RBx9StoredTweak?
     @State private var pendingRename: RBx9StoredTweak?
-    @State private var renamedBase = ""
 
     var body: some View {""",
     "rename state"
@@ -146,43 +145,11 @@ replace_once(
         .sheet(isPresented: $importing) {''',
     r'''        .onAppear { vault.refresh() }
         .sheet(item: $pendingRename) { item in
-            NavigationStack {
-                Form {
-                    Section("Filename") {
-                        HStack(spacing: 2) {
-                            TextField("Name", text: $renamedBase)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                            Text("." + item.url.pathExtension.lowercased())
-                                .foregroundStyle(.secondary)
-                        }
-                    } footer: {
-                        Text("The original binary contents stay unchanged. Rename affects the saved filename and future injections only.")
-                    }
-                }
-                .navigationTitle("Rename Dylib")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Cancel") { pendingRename = nil }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Save") {
-                            do {
-                                try vault.rename(item, to: renamedBase)
-                                pendingRename = nil
-                            } catch {
-                                // Dismiss the rename sheet before surfacing an alert.
-                                pendingRename = nil
-                                notice = error.localizedDescription
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                                    showNotice = true
-                                }
-                            }
-                        }
-                        .fontWeight(.semibold)
-                        .disabled(renamedBase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
+            RBx9RenameSheet(item: item, vault: vault) { message in
+                pendingRename = nil
+                notice = message
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    showNotice = true
                 }
             }
             .presentationDetents([.medium])
@@ -232,8 +199,64 @@ src += r'''
 
 private extension RBx9DylibStorageView {
     func beginRename(_ item: RBx9StoredTweak) {
-        renamedBase = item.url.deletingPathExtension().lastPathComponent
         pendingRename = item
+    }
+}
+'''
+
+# Keep the rename form in its own SwiftUI View so the storage List can
+# compile without the type check explosion caused by nested sheet + form.
+src += r'''
+private struct RBx9RenameSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let item: RBx9StoredTweak
+    let vault: RBx9DylibStorage
+    let onError: (String) -> Void
+    @State private var newName: String
+
+    init(item: RBx9StoredTweak, vault: RBx9DylibStorage, onError: @escaping (String) -> Void) {
+        self.item = item
+        self.vault = vault
+        self.onError = onError
+        _newName = State(initialValue: item.url.deletingPathExtension().lastPathComponent)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Filename") {
+                    HStack(spacing: 6) {
+                        TextField("Name", text: $newName)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Text(verbatim: "." + item.url.pathExtension.lowercased())
+                            .foregroundStyle(.secondary)
+                    }
+                } footer: {
+                    Text("The saved binary is not modified. The file extension stays unchanged.")
+                }
+            }
+            .navigationTitle("Rename Dylib")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        do {
+                            try vault.rename(item, to: newName)
+                            dismiss()
+                        } catch {
+                            onError(error.localizedDescription)
+                            dismiss()
+                        }
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
     }
 }
 '''
@@ -247,8 +270,4 @@ cfg = config.read_text()
 old = "FEATHER_PROJECT_VERSION=1.3.8"
 if cfg.count(old) != 1: raise RuntimeError("Expected v1.3.8 app version")
 config.write_text(cfg.replace(old, "FEATHER_PROJECT_VERSION=1.3.9", 1))
-for index, line in enumerate(src.splitlines(), start=1):
-    if 466 <= index <= 494:
-        print(f"RBx9 diagnostic line {index}: {line}")
-raise RuntimeError("Diagnostic-only run: stop before Xcode; remove when corrected")
 print("RBx9 1.3.9: rename stored dylibs, preserve extensions, reject conflicts and update queue paths")
