@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: rbx9-source-manager-ipa
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
