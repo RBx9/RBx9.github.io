@@ -25,7 +25,7 @@ s = s.replace("import NimbleViews\n", "import NimbleViews\nimport CryptoKit\n", 
 s = s.replace("@State private var _isAddingPresenting = false", """@State private var _isAddingPresenting = false
     @StateObject private var _rbx9Vault = RBx9DylibStorage.shared
     @State private var _rbx9ShowStorageNotice = false
-    @State private var _rbx9StorageNotice = """"", 1)
+    @State private var _rbx9StorageNotice = """""", 1)
 
 # Append the stored library as a distinct section INSIDE the quick editor NBList.
 anchor = ".safeAreaInset(edge: .bottom, spacing: 0)"
@@ -42,7 +42,7 @@ stored_section = """
                 } else {
                     ForEach(_rbx9Vault.items) { item in
                         Button {
-                            _rbx9SelectFromStorage(item)
+                            _rbx9SelectFromStorage(item.url)
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "shippingbox.fill")
@@ -365,6 +365,15 @@ struct RBx9DylibStorageView: View {
 }
 """
 p.write_text(s)
+
+# Update displayed RBx9 credit while preserving original GPL acknowledgments.
+about = app / "Views/Settings/About/AboutView.swift"
+about_content = about.read_text()
+old_credit = 'Label("RBx9 · App customization", systemImage: "person.crop.circle")'
+new_credit = 'Label("RBx9 · Developing and Modification", systemImage: "person.crop.circle")'
+if about_content.count(old_credit) != 1:
+    raise RuntimeError("RBx9 About credit anchor not found")
+about.write_text(about_content.replace(old_credit, new_credit, 1))
 
 # Link to storage from Settings as requested.
 settings = app / "Views/Settings/SettingsView.swift"
