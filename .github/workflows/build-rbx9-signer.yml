@@ -76,6 +76,11 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_10.py
           python3 rbx9-signer/upgrade_v1_3_11.py
           python3 rbx9-signer/upgrade_v1_3_12.py
+          python3 rbx9-signer/upgrade_v1_3_13.py
+          grep -F 'RBx9 Dark (Default)' feather/Feather/Views/Settings/App\ Icon/AppIconView.swift
+          grep -F 'FEATHER_PROJECT_VERSION=1.3.13' feather/Feather.xcconfig
+          test -f rbx9-signer/icon-original-before-dark-base64.txt
+          test -f feather/Feather/Resources/Assets.xcassets/AppIcon.appiconset/rbx9.png
           grep -F '.swipeActions(edge: .trailing, allowsFullSwipe: true)' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'Label("Share / Export", systemImage: "square.and.arrow.up")' feather/Feather/Views/Signing/SigningTweaksView.swift
           ! grep -Fq 'RBx9StoredTweakExportButton' feather/Feather/Views/Signing/SigningTweaksView.swift
@@ -148,30 +153,30 @@ jobs:
           test -f "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app/Info.plist"
           (
             cd "$RUNNER_TEMP/rbx9-package"
-            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.3.12-unsigned.ipa" Payload
+            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.3.13-unsigned.ipa" Payload
           )
           # Guard against empty/invalid packages before uploading them.
-          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.3.12-unsigned.ipa" | tail -1
-          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.3.12-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
-          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.3.12-unsigned.ipa")" -gt 1000000
-          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.3.12-unsigned.ipa"
+          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.3.13-unsigned.ipa" | tail -1
+          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.3.13-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
+          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.3.13-unsigned.ipa")" -gt 1000000
+          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.3.13-unsigned.ipa"
 
       - name: Upload actual RBx9 IPA
         uses: actions/upload-artifact@v4
         with:
-          name: RBx9-v1.3.12-iOS16plus-unsigned-IPA
-          path: RBx9-v1.3.12-unsigned.ipa
+          name: RBx9-v1.3.13-iOS16plus-unsigned-IPA
+          path: RBx9-v1.3.13-unsigned.ipa
           if-no-files-found: error
 
-      - name: Publish verified v1.3.12 unsigned IPA
+      - name: Publish verified v1.3.13 unsigned IPA
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
-          TAG="rbx9-signer-v1.3.12"
-          IPA="$GITHUB_WORKSPACE/RBx9-v1.3.12-unsigned.ipa"
+          TAG="rbx9-signer-v1.3.13"
+          IPA="$GITHUB_WORKSPACE/RBx9-v1.3.13-unsigned.ipa"
           test -f "$IPA"
           unzip -t "$IPA" | tail -1
           if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
@@ -179,8 +184,8 @@ jobs:
           else
             gh release create "$TAG" "$IPA" --repo "$GH_REPO" \
               --target "$GITHUB_SHA" \
-              --title "RBx9 Signer v1.3.12 (Unsigned IPA)" \
-              --notes "Cleaner Dylib Storage: no visible row action buttons; swipe left to delete with confirmation, or long press for Share/Export and Rename. Retains RBx9-branded launch screen and all signing features. Existing injection and signing remain supported. Existing signing and reinstall workflows remain in place. Unsigned IPA for iOS 16+; sign with your own certificate. Based on Feather GPL-3.0; source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
+              --title "RBx9 Signer v1.3.13 (Unsigned IPA)" \
+              --notes "New dark navy RBx9 icon applied to the default app and branded launch screen at 1024x1024. The previous icon is backed up for one-step rollback. Dylib Storage gestures and all signing features remain unchanged. Existing injection and signing remain supported. Existing signing and reinstall workflows remain in place. Unsigned IPA for iOS 16+; sign with your own certificate. Based on Feather GPL-3.0; source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
               --latest=false
           fi
 
@@ -190,12 +195,12 @@ jobs:
           ref: main
           path: source-main
 
-      - name: Add validated v1.3.12 to ESign and Feather feeds
+      - name: Add validated v1.3.13 to ESign and Feather feeds
         shell: bash
         run: |
           set -euo pipefail
           cd source-main
-          printf '%s\n' 'RBx9 v1.3.12: streamlined Dylib Storage, swipe left to delete, long press to export or rename. Preserves previous launch improvements and signing functionality.' > ../rbx9-release-notes.txt
+          printf '%s\n' 'RBx9 v1.3.13: new 1024x1024 dark navy RBx9 icon for app and launch screen; previous icon safely backed up for easy rollback.' > ../rbx9-release-notes.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           # Start over from fresh main on every retry; rebasing generated files
@@ -204,8 +209,8 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             python3 ipa-source/scripts/repo_manager.py add \
-              --ipa ../RBx9-v1.3.12-unsigned.ipa \
-              --url "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.12/RBx9-v1.3.12-unsigned.ipa" \
+              --ipa ../RBx9-v1.3.13-unsigned.ipa \
+              --url "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.13/RBx9-v1.3.13-unsigned.ipa" \
               --date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
               --notes-file ../rbx9-release-notes.txt
             git add ipa-source/catalog.json ipa-source/source.json ipa-source/esign.json ipa/index.html esign/index.html
@@ -213,7 +218,7 @@ jobs:
               echo "Version already current in IPA catalogs"
               exit 0
             fi
-            git commit -m "Publish RBx9 Signer v1.3.12 to IPA catalogs"
+            git commit -m "Publish RBx9 Signer v1.3.13 to IPA catalogs"
             if git push origin HEAD:main; then
               exit 0
             fi
