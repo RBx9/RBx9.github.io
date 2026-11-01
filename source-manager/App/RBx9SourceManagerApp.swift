@@ -235,15 +235,33 @@ final class GitHubManager: ObservableObject {
         } catch { status = error.localizedDescription }
     }
     func changeApp(bundle:String,name:String,developer:String,description:String,iconURL:String) async {
+        let title = name.trimmingCharacters(in:.whitespacesAndNewlines)
+        let author = developer.trimmingCharacters(in:.whitespacesAndNewlines)
+        let artwork = iconURL.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard !title.isEmpty && !author.isEmpty else {
+            alertMessage = "App name and developer are required."
+            return
+        }
+        guard artwork.hasPrefix("https://") else {
+            alertMessage = "App icon must be an HTTPS image URL."
+            return
+        }
         await work("Saving app metadata") {
-            var content = self.catalog
-            guard var app = content[bundle] as? [String:Any] else { throw ManagerError.message("App not found") }
-            app["name"] = name
-            app["developerName"] = developer
+            // Always fetch latest metadata to avoid overwriting another edit.
+            let (current,_) = try await self.file("ipa-source/catalog.json")
+            var content = try self.parse(current)
+            guard var app = content[bundle] as? [String:Any] else {
+                throw ManagerError.message("App no longer exists in the catalog.")
+            }
+            app["name"] = title
+            app["developerName"] = author
             app["localizedDescription"] = description
-            app["iconURL"] = iconURL
+            app["iconURL"] = artwork
             content[bundle] = app
             try await self.put("ipa-source/catalog.json",data:try self.json(content))
+        }
+        if status.hasPrefix("Saved to GitHub.") {
+            alertMessage = "App changes saved to GitHub. Refresh ESign after publishing finishes."
         }
     }
     func removeApp(bundle:String) async {
@@ -678,34 +696,62 @@ struct AppsScreen: View {
         }
     }
 }
-struct AppEditor:View {
-    @EnvironmentObject var manager:GitHubManager
-    let app:SourceApp
+struct AppEditor: View {
+    @EnvironmentObject var manager: GitHubManager
+    let app: SourceApp
     @State private var name = ""
     @State private var developer = ""
     @State private var description = ""
     @State private var icon = ""
-    var body:some View {
+
+    var body: some View {
         Form {
-            Section("Application metadata") {
-                TextField("Name",text:$name)
-                TextField("Developer",text:$developer)
-                TextField("Description",text:$description,axis:.vertical).lineLimit(3...6)
-                TextField("Icon URL (HTTPS)",text:$icon).textInputAutocapitalization(.never)
+            Section("Application details") {
+                TextField("Name", text:$name)
+                TextField("Developer", text:$developer)
+                TextField("Description", text:$description, axis:.vertical).lineLimit(3...6)
+                TextField("Icon URL (HTTPS)", text:$icon)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
             }
             Section {
-                Button("Save changes") { Task { await manager.changeApp(bundle:app.id,name:name,developer:developer,description:description,iconURL:icon) } }
-                    .foregroundStyle(Theme.cyan)
+                Button {
+                    Task {
+                        await manager.changeApp(
+                            bundle:app.id, name:name, developer:developer,
+                            description:description, iconURL:icon
+                        )
+                    }
+                } label: {
+                    HStack {
+                        if manager.busy { ProgressView().tint(Theme.cyan) }
+                        Label(manager.busy ? "Saving…" : "Save Changes",systemImage:"checkmark.circle.fill")
+                    }.foregroundStyle(Theme.cyan)
+                }
+                .disabled(manager.busy || !manager.connected)
             }
-            Section { Text("App ID: \(app.id)").font(.caption).foregroundStyle(.secondary) }
+            Section {
+                Text("Bundle ID: \(app.id)")
+                    .font(.caption).foregroundStyle(.secondary)
+                if !manager.status.isEmpty {
+                    Text(manager.status).font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
         .navigationTitle(app.name)
         .onAppear {
             let meta = manager.catalog[app.id] as? [String:Any] ?? [:]
-            name = app.name; developer = app.developer
+            name = app.name
+            developer = app.developer
             description = meta["localizedDescription"] as? String ?? ""
             icon = app.icon
         }
+        .alert("Source Manager",isPresented:Binding(
+            get:{manager.alertMessage != nil},
+            set:{if !$0 {manager.alertMessage=nil}}
+        )) {
+            Button("OK",role:.cancel) { manager.alertMessage=nil }
+        } message: { Text(manager.alertMessage ?? "") }
     }
 }
 struct DebsScreen: View {
