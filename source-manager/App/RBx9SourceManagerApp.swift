@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import UniformTypeIdentifiers
+import UIKit
 import CryptoKit
 import Security
 
@@ -357,6 +358,7 @@ final class GitHubManager: ObservableObject {
     // URL returned by the picker is valid; the long upload runs afterward.
     func importFile(_ url: URL, sileo: Bool) {
         let expected = sileo ? "deb" : "ipa"
+        status = "Selected \(url.lastPathComponent)"
         guard url.pathExtension.lowercased() == expected else {
             alertMessage = "Choose a .\(expected) file from Files."
             return
@@ -591,6 +593,51 @@ struct StatusPanel: View {
         }
     }
 }
+/// Native iOS document browser. IPA and DEB are not always recognized by
+/// SwiftUI's generic .item fileImporter filter; the UIKit import-copy picker
+/// uses explicitly registered extensions plus broad document data types.
+struct PackageDocumentPicker: UIViewControllerRepresentable {
+    let onPick: (URL) -> Void
+    let onCancel: () -> Void
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let ipaType = UTType(importedAs: "com.rbx9.source-manager.ipa", conformingTo: .data)
+        let debType = UTType(importedAs: "com.rbx9.source-manager.deb", conformingTo: .data)
+        let picker = UIDocumentPickerViewController(
+            forOpeningContentTypes: [ipaType, debType, .data, .item, .archive],
+            asCopy: true
+        )
+        picker.delegate = context.coordinator
+        picker.allowsMultipleSelection = false
+        picker.shouldShowFileExtensions = true
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onPick: onPick, onCancel: onCancel)
+    }
+
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let onPick: (URL) -> Void
+        let onCancel: () -> Void
+        init(onPick: @escaping (URL) -> Void, onCancel: @escaping () -> Void) {
+            self.onPick = onPick
+            self.onCancel = onCancel
+        }
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let selected = urls.first else { onCancel(); return }
+            // The picker creates an app-accessible copy, but it may be removed
+            // when the picker dismisses. Stage it before dismissing.
+            onPick(selected)
+        }
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            onCancel()
+        }
+    }
+}
+
 struct AppsScreen: View {
     @EnvironmentObject var manager: GitHubManager
     @State private var importer = false
@@ -662,16 +709,14 @@ struct AppsScreen: View {
             }
             // ESign IPA files normally have a dynamic UTType. Selecting all Files
             // items avoids iOS graying out .ipa files in the Files document picker.
-            .fileImporter(isPresented:$importer,
-                          allowedContentTypes:[.item],
-                          allowsMultipleSelection:false) { result in
-                switch result {
-                case .success(let urls):
-                    guard let url = urls.first else { return }
-                    manager.importFile(url,sileo:false)
-                case .failure(let error):
-                    manager.alertMessage = error.localizedDescription
-                }
+            .sheet(isPresented:$importer) {
+                PackageDocumentPicker(
+                    onPick: { url in
+                        manager.importFile(url,sileo:false)
+                        importer = false
+                    },
+                    onCancel: { importer = false }
+                )
             }
             .confirmationDialog("Remove \(pendingDelete?.name ?? "app")?",
                 isPresented:Binding(get:{pendingDelete != nil},set:{if !$0 {pendingDelete=nil}}),
@@ -812,16 +857,14 @@ struct DebsScreen: View {
                         .disabled(manager.busy)
                 }
             }
-            .fileImporter(isPresented:$importer,
-                          allowedContentTypes:[.item],
-                          allowsMultipleSelection:false) { result in
-                switch result {
-                case .success(let urls):
-                    guard let url = urls.first else { return }
-                    manager.importFile(url,sileo:true)
-                case .failure(let error):
-                    manager.alertMessage = error.localizedDescription
-                }
+            .sheet(isPresented:$importer) {
+                PackageDocumentPicker(
+                    onPick: { url in
+                        manager.importFile(url,sileo:true)
+                        importer = false
+                    },
+                    onCancel: { importer = false }
+                )
             }
             .confirmationDialog("Remove \(pendingDelete?.filename ?? "package")?",
                 isPresented:Binding(get:{pendingDelete != nil},set:{if !$0 {pendingDelete=nil}}),
