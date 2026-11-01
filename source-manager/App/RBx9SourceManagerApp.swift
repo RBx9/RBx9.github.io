@@ -983,14 +983,14 @@ struct AppsScreen: View {
                                 } else {
                                     draft.libraries.append(item)
                                     // Keep the original IPA draft untouched.
-                                    do { _ = try vault.save(item.url) } catch { /* storage is optional */ }
+                                    do { _ = try vault.save(item.url,originalName:item.name) } catch { /* storage is optional */ }
                                 }
                             }
                         case .vaultImport:
                             for url in urls {
                                 guard let file = manager.stageSelectedFile(url,expected:"dylib") else { continue }
                                 do {
-                                    _ = try vault.save(file.url)
+                                    _ = try vault.save(file.url,originalName:file.name)
                                 } catch { manager.alertMessage = error.localizedDescription }
                                 manager.discardStagedFiles([file])
                             }
