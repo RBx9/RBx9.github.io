@@ -1,0 +1,26 @@
+name: Validate RBx9 Signer Vault (Unpublished)
+
+on:
+  push:
+    branches: [fix/rbx9-signer-shared-vault-no-publish]
+    paths:
+      - 'rbx9-signer/upgrade_v1_3_8.py'
+      - '.github/workflows/verify-rbx9-signer-vault-unpublished.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Python upgrade script syntax and shared-folder integration
+        run: |
+          set -euo pipefail
+          python3 -m py_compile rbx9-signer/upgrade_v1_3_8.py
+          grep -F 'group.com.rbx9.shared' rbx9-signer/upgrade_v1_3_8.py
+          grep -F 'UIFileSharingEnabled' rbx9-signer/upgrade_v1_3_8.py
+          grep -F 'migrateLocalFilesIfShared' rbx9-signer/upgrade_v1_3_8.py
+          echo "PASS: RBx9 Signer shared vault patch syntax"
