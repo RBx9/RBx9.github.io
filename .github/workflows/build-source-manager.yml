@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: rbx9-source-manager-ipa
+  group: rbx9-source-manager-v1-1
   cancel-in-progress: true
 
 jobs:
