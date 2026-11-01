@@ -6,6 +6,8 @@ on:
       - fix/source-manager-dylib-injection-no-publish
     paths:
       - 'source-manager/scripts/prepare_injected_ipa.py'
+      - 'source-manager/App/**'
+      - '.github/workflows/inject-source-manager-ipa.yml'
       - '.github/workflows/test-source-manager-injection-unpublished.yml'
   workflow_dispatch:
 
@@ -13,6 +15,27 @@ permissions:
   contents: read
 
 jobs:
+  compile-ios-no-publish:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Create bundled app icon
+        run: swift source-manager/scripts/create_icon.swift
+      - name: Generate Xcode project
+        run: |
+          cd source-manager
+          xcodegen generate
+      - name: Compile iOS app without packaging or releasing
+        run: |
+          set -euo pipefail
+          xcodebuild -project source-manager/RBx9SourceManager.xcodeproj \
+            -scheme RBx9SourceManager -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/SourceManagerBuild" \
+            CODE_SIGNING_ALLOWED=NO build
+          test -f "$RUNNER_TEMP/SourceManagerBuild/Build/Products/Release-iphoneos/RBx9SourceManager.app/RBx9SourceManager"
   integration-test:
     runs-on: macos-15
     steps:
