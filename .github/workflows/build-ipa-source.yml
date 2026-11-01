@@ -98,7 +98,7 @@ jobs:
 
       - name: Resolve app icons for new IPA uploads
         shell: bash
-        run: python3 ipa-source/scripts/repo_manager.py sync-icons --force-bundle com.google.ios.youtube
+        run: python3 ipa-source/scripts/repo_manager.py sync-icons
 
       - name: Generate source files
         run: python3 ipa-source/scripts/repo_manager.py render
