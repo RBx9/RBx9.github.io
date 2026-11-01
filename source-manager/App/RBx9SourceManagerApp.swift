@@ -259,8 +259,8 @@ final class GitHubManager: ObservableObject {
         status = activity + "…"
         do {
             try await action()
-            status = "Saved to GitHub. Publishing will finish after GitHub Actions and Pages update."
             await refresh()
+            status = "Saved to GitHub. Publishing will finish after GitHub Actions and Pages update."
         } catch { status = error.localizedDescription }
         busy = false
     }
