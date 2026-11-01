@@ -72,6 +72,8 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_8.py
           python3 rbx9-signer/upgrade_v1_3_9.py
           grep -F 'func rename(_ item: RBx9StoredTweak' feather/Feather/Views/Signing/SigningTweaksView.swift
+          grep -F 'RBx9StoredTweakExportButton' feather/Feather/Views/Signing/SigningTweaksView.swift
+          grep -F 'ShareLink(item:' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'Button("Save")' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'RBx9DylibStorage' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'Developing and Modification' feather/Feather/Views/Settings/About/AboutView.swift
@@ -165,7 +167,7 @@ jobs:
             gh release create "$TAG" "$IPA" --repo "$GH_REPO" \
               --target "$GITHUB_SHA" \
               --title "RBx9 Signer v1.3.9 (Unsigned IPA)" \
-              --notes "Add Rename to Dylib Storage with conflict prevention, preserved file extensions, queued injection URL remapping and swipe/menu actions. Existing injection and signing remain supported. Existing signing and reinstall workflows remain in place. Unsigned IPA for iOS 16+; sign with your own certificate. Based on Feather GPL-3.0; source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
+              --notes "Rename saved dylibs safely and export or import stored .dylib and .deb files via the iOS share sheet and Files. Duplicate-name protection and saved signing queue remapping are included. Existing injection and signing remain supported. Existing signing and reinstall workflows remain in place. Unsigned IPA for iOS 16+; sign with your own certificate. Based on Feather GPL-3.0; source: https://github.com/RBx9/RBx9.github.io/tree/rbx9-signer-build" \
               --latest=false
           fi
 
@@ -180,7 +182,7 @@ jobs:
         run: |
           set -euo pipefail
           cd source-main
-          printf '%s\n' 'RBx9 v1.3.9: rename dylib storage files with duplicate-name protection and saved signing queue updates.' > ../rbx9-release-notes.txt
+          printf '%s\n' 'RBx9 v1.3.9: rename saved dylibs, export through Share Sheet or Files and import .dylib/.deb with duplicate protection.' > ../rbx9-release-notes.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           # Start over from fresh main on every retry; rebasing generated files
