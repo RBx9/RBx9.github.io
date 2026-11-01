@@ -46,6 +46,18 @@ final class RBx9DylibVault: ObservableObject {
             forSecurityApplicationGroupIdentifier:Self.appGroupID) != nil
         let directory = root
         try? FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+        let local=FileManager.default.urls(for:.documentDirectory,in:.userDomainMask)[0]
+            .appendingPathComponent("RBx9DylibStorage",isDirectory:true)
+        if directory.standardizedFileURL != local.standardizedFileURL {
+            for file in (try? FileManager.default.contentsOfDirectory(
+                at:local,includingPropertiesForKeys:nil)) ?? [] {
+                guard file.pathExtension.lowercased()=="dylib" else { continue }
+                let target=directory.appendingPathComponent(file.lastPathComponent)
+                if !FileManager.default.fileExists(atPath:target.path) {
+                    try? FileManager.default.copyItem(at:file,to:target)
+                }
+            }
+        }
         let files = (try? FileManager.default.contentsOfDirectory(at:directory,
             includingPropertiesForKeys:[.isRegularFileKey,.fileSizeKey],
             options:[.skipsHiddenFiles])) ?? []
