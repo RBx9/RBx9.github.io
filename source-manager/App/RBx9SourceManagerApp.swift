@@ -84,6 +84,7 @@ final class GitHubManager: ObservableObject {
     @Published var sileoIconURL = "https://rbx9.github.io/CydiaIcon.png"
     @Published var alertMessage: String? = nil
     @Published var uploadFraction: Double? = nil
+    @Published var transferActive = false
     @Published var uploadSummary = ""
     @Published var uploadRemainder = ""
     @Published var hiddenBundles: Set<String> = []
@@ -454,7 +455,7 @@ final class GitHubManager: ObservableObject {
             code == .internationalRoamingOff || code == .dataNotAllowed
     }
     private func progressUpdate(sent:Int64,total:Int64,eta:Double?) {
-        guard total > 0 else { return }
+        guard transferActive, total > 0 else { return }
         uploadFraction = min(1,max(0,Double(sent)/Double(total)))
         let mb = 1_048_576.0
         uploadSummary = String(format:"%.1f / %.1f MB uploaded",Double(sent)/mb,Double(total)/mb)
@@ -469,6 +470,21 @@ final class GitHubManager: ObservableObject {
             timeText = "Calculating time…"
         }
         uploadRemainder = String(format:"%.1f MB left · %@",Double(remaining)/mb,timeText)
+    }
+    /// End the transfer indicator when GitHub confirms the asset POST.
+    /// The separate GitHub Actions packaging/catalog phase is NOT a file upload.
+    private func finishTransfer() {
+        transferActive = false
+        uploadFraction = nil
+        uploadSummary = ""
+        uploadRemainder = ""
+    }
+    private func beginTransfer(name:String,size:Int) {
+        transferActive = true
+        uploadFraction = 0
+        uploadSummary = String(format:"0 / %.1f MB uploaded",Double(size)/1_048_576)
+        uploadRemainder = "Calculating remaining time…"
+        status = "Uploading \(name)…"
     }
     private func existingAsset(releaseID:Int,name:String) async -> [String:Any]? {
         guard let data = try? await api("GET","/repos/\(repository)/releases/\(releaseID)/assets?per_page=100"),
@@ -486,9 +502,7 @@ final class GitHubManager: ObservableObject {
                 guard uploaded["size"] as? Int == localSize else {
                     throw ManagerError.message("An uploaded asset already uses \(name) but has a different size.")
                 }
-                uploadFraction = 1
-                uploadSummary = "File already uploaded"
-                uploadRemainder = "0 MB left"
+                finishTransfer()
                 return uploaded
             }
             var parts=URLComponents(string:"https://uploads.github.com/repos/\(repository)/releases/\(releaseID)/assets")!
@@ -499,9 +513,7 @@ final class GitHubManager: ObservableObject {
             req.setValue("application/vnd.github+json",forHTTPHeaderField:"Accept")
             req.setValue("application/octet-stream",forHTTPHeaderField:"Content-Type")
             req.setValue("2022-11-28",forHTTPHeaderField:"X-GitHub-Api-Version")
-            uploadFraction = 0
-            uploadSummary = String(format:"0 / %.1f MB uploaded",Double(localSize)/1_048_576)
-            uploadRemainder = "Calculating remaining time…"
+            beginTransfer(name:name,size:localSize)
             do {
                 let (data,response) = try await RBx9UploadTransport.shared.upload(
                     request:req,fromFile:path,
@@ -512,20 +524,33 @@ final class GitHubManager: ObservableObject {
                     }
                 )
                 let code=(response as? HTTPURLResponse)?.statusCode ?? 0
-                if (200...299).contains(code) { return try parse(data) }
+                if (200...299).contains(code) {
+                    let asset = try parse(data)
+                    finishTransfer()
+                    return asset
+                }
                 if code == 422, let existing = await existingAsset(releaseID:releaseID,name:name) {
-                    if existing["size"] as? Int == localSize { return existing }
+                    if existing["size"] as? Int == localSize {
+                        finishTransfer()
+                        return existing
+                    }
                 }
                 if [429,500,502,503,504].contains(code) {
+                    finishTransfer()
                     retries += 1
                     status = "GitHub is temporarily unavailable. Retrying upload automatically…"
                     try await Task.sleep(nanoseconds:UInt64(min(30,3*retries))*1_000_000_000)
                     continue
                 }
+                finishTransfer()
                 throw ManagerError.message("Upload failed (HTTP \(code)): \(String(decoding:data,as:UTF8.self).prefix(200))")
             } catch {
-                guard isOfflineError(error) else { throw error }
+                if !isOfflineError(error) {
+                    finishTransfer()
+                    throw error
+                }
                 retries += 1
+                finishTransfer()
                 status = "Connection lost. Your IPA is safely saved; waiting and retrying…"
                 uploadRemainder = "Will retry when internet returns"
                 try await Task.sleep(nanoseconds:UInt64(min(30,3*retries))*1_000_000_000)
@@ -614,11 +639,11 @@ final class GitHubManager: ObservableObject {
             _=try await apiWhenConnected("PATCH","/repos/\(repository)/releases/\(id)",
                 body:try json(["draft":false]))
             finished=true
-            uploadFraction=1
-            uploadRemainder="0 MB left · Transfer complete"
+            finishTransfer()
             status="Injection queued. The modified IPA is published only after GitHub verification."
             alertMessage="All files uploaded. The modified IPA will appear in ESign after verification succeeds."
         } catch {
+            finishTransfer()
             status="Injection upload paused: \(error.localizedDescription)"
             alertMessage="Your IPA and dylibs are saved locally. The app will retry this upload when reopened."
         }
@@ -730,11 +755,11 @@ final class GitHubManager: ObservableObject {
             }
             _=try await apiWhenConnected("PATCH","/repos/\(repository)/releases/\(releaseID)",body:try json(["draft":false]))
             succeeded=true
-            uploadFraction=1
-            uploadRemainder="0 MB left · Upload complete"
+            finishTransfer()
             await refresh()
             status="Uploaded successfully. GitHub Actions is updating the source."
         } catch {
+            finishTransfer()
             status=error.localizedDescription
             alertMessage="Upload paused: \(error.localizedDescription). The file is retained for recovery after reconnecting or reopening the app."
         }
@@ -870,7 +895,7 @@ struct StatusPanel: View {
                             .font(.caption).foregroundStyle(.primary)
                         Spacer(minLength:0)
                     }
-                    if let fraction = manager.uploadFraction {
+                    if manager.transferActive, let fraction = manager.uploadFraction {
                         ProgressView(value:fraction,total:1)
                             .tint(Theme.cyan)
                         HStack {
