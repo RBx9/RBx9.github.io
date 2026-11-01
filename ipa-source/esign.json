@@ -107,6 +107,15 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.3.10",
+          "buildVersion": "1",
+          "date": "2026-11-01T04:00:33Z",
+          "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.10/RBx9-v1.3.10-unsigned.ipa",
+          "size": 19684479,
+          "minOSVersion": "16.0",
+          "localizedDescription": "RBx9 v1.3.10: removes old animated transmission startup and artificial launch delay; retains Dylib Storage and import/export."
+        },
+        {
           "version": "1.3.9",
           "buildVersion": "1",
           "date": "2026-11-01T03:33:48Z",
@@ -142,11 +151,11 @@
           "version": "1.3.6"
         }
       ],
-      "version": "1.3.9",
-      "versionDate": "2026-11-01T03:33:48Z",
-      "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.9/RBx9-v1.3.9-unsigned.ipa",
-      "size": 20228783,
-      "versionDescription": "RBx9 v1.3.9: rename saved dylibs, export through Share Sheet or Files and import .dylib/.deb with duplicate protection.",
+      "version": "1.3.10",
+      "versionDate": "2026-11-01T04:00:33Z",
+      "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.10/RBx9-v1.3.10-unsigned.ipa",
+      "size": 19684479,
+      "versionDescription": "RBx9 v1.3.10: removes old animated transmission startup and artificial launch delay; retains Dylib Storage and import/export.",
       "minOSVersion": "16.0"
     },
     {
