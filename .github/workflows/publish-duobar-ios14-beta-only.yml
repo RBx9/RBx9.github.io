@@ -1,0 +1,112 @@
+name: Publish DuoBar iOS 14 Rootful Beta Only
+
+on:
+  push:
+    branches: [publish/duobar-ios14-taurine-beta-only]
+    paths: ['.github/workflows/publish-duobar-ios14-beta-only.yml']
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: duobar-ios14-beta-source-publish
+  cancel-in-progress: false
+
+jobs:
+  publish-beta:
+    if: github.repository == 'RBx9/RBx9.github.io'
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - name: Check out isolated publisher branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Build dependencies
+        run: brew install make ldid dpkg gnu-tar xz rsync
+
+      - name: Fetch pinned DuoBar beta source and Theos
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch feature/ios14-taurine-rootful-dev-no-publish \
+            https://github.com/RBx9/DuoBar.git "$RUNNER_TEMP/DuoBar"
+          cd "$RUNNER_TEMP/DuoBar"
+          test "$(git rev-parse HEAD)" = e046a2a3dcf993641aadea293fbb1ce49ae6014d
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+          git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/theos/sdks.git "$RUNNER_TEMP/theos-sdks"
+          git -C "$RUNNER_TEMP/theos-sdks" sparse-checkout set iPhoneOS14.5.sdk
+          mkdir -p "$RUNNER_TEMP/theos/sdks"
+          cp -R "$RUNNER_TEMP/theos-sdks/iPhoneOS14.5.sdk" "$RUNNER_TEMP/theos/sdks/"
+
+      - name: Compile and validate ONLY the experimental iOS 14 rootful .deb
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/DuoBar"
+          cp packaging/control.ios14-taurine control
+          cp packaging/DuoBar14.plist DuoBar.plist
+          export THEOS="$RUNNER_TEMP/theos"
+          export PATH="$(brew --prefix gnu-tar)/libexec/gnubin:$PATH"
+          DUO_IOS14_ROOTFUL=1 gmake clean package FINALPACKAGE=1
+          test "$(find packages -maxdepth 1 -name '*.deb' | wc -l | tr -d ' ')" -eq 1
+          deb="$(find packages -maxdepth 1 -name '*.deb' | head -n1)"
+          test "$(dpkg-deb -f "$deb" Package)" = "local.duobar.ios14"
+          test "$(dpkg-deb -f "$deb" Architecture)" = "iphoneos-arm"
+          test "$(dpkg-deb -f "$deb" Version)" = "2.7.2~ios14beta1"
+          dpkg-deb -x "$deb" "$RUNNER_TEMP/verified-beta"
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+          import os
+          root=Path(os.environ['RUNNER_TEMP'])/'verified-beta'
+          p=root/'Library/MobileSubstrate/DynamicLibraries/DuoBar.plist'
+          assert plistlib.loads(p.read_bytes())['Filter']['Bundles']==['com.apple.springboard']
+          assert (root/'Library/MobileSubstrate/DynamicLibraries/DuoBar.dylib').stat().st_size>1000
+          assert not (root/'var/jb').exists()
+          print('Validated experimental iOS14 rootful payload and injection filter')
+          PY
+          cp "$deb" "$RUNNER_TEMP/DuoBar_2.7.2_ios14_Taurine_beta1.deb"
+
+      - name: Commit only the beta asset, beta index entry, and source generator to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          beta="DuoBar_2.7.2_ios14_Taurine_beta1.deb"
+          git show "$GITHUB_SHA:scripts/build-repo.sh" > "$RUNNER_TEMP/beta-build-repo.sh"
+          git fetch origin main
+          git switch -C isolated-beta-publication origin/main
+          test ! -e "source-debs/$beta" || {
+            echo 'Beta is already published: refusing to overwrite without review' >&2
+            exit 1
+          }
+          test -f scripts/build-repo.sh
+          test -f package-sources.txt
+          ! grep -Fq 'local.duobar.ios14' Packages
+          ! grep -Fq "$beta" package-sources.txt
+          mkdir -p source-debs
+          cp "$RUNNER_TEMP/$beta" "source-debs/$beta"
+          cp "$RUNNER_TEMP/beta-build-repo.sh" scripts/build-repo.sh
+          bash -n scripts/build-repo.sh
+          sha="$(shasum -a 256 "source-debs/$beta" | cut -d' ' -f1)"
+          printf 'local:source-debs/%s|%s|%s\n' "$beta" "$beta" "$sha" >> package-sources.txt
+          git add -- source-debs/"$beta" scripts/build-repo.sh package-sources.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          actual="$(git diff --cached --name-only)"
+          printf '%s\n' "$actual"
+          test "$(printf '%s\n' "$actual" | wc -l | tr -d ' ')" -eq 3
+          git diff --cached --check
+          git commit -m 'Add only experimental DuoBar iOS14 rootful beta to Sileo input assets'
+          git push origin HEAD:main
+
+      - name: Run existing repository index builder (no other releases)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run build-repo.yml --ref main
+          echo 'Triggered Sileo index builder. The user will see the beta after it succeeds.'
