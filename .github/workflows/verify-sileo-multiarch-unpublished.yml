@@ -1,0 +1,70 @@
+name: Verify iOS 14 Rootful + Rootless Sileo Repo (No Publish)
+
+on:
+  push:
+    branches:
+      - fix/sileo-ios14-rootful-multiarch-no-publish
+    paths:
+      - 'scripts/make-release.py'
+      - 'README.md'
+      - '.github/workflows/verify-sileo-multiarch-unpublished.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-repository-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check index compression and generate a local Release file
+        shell: bash
+        run: |
+          set -euo pipefail
+          gzip -t Packages.gz
+          bzip2 -t Packages.bz2
+          cmp Packages <(gzip -dc Packages.gz)
+          cmp Packages <(bzip2 -dc Packages.bz2)
+          python3 scripts/make-release.py
+      - name: Validate rootful/rootless/RootHide and Release checksums
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          release = Path("Release").read_text(encoding="utf-8")
+          lines = release.splitlines()
+          arch = next(line.split(":",1)[1].strip().split() for line in lines if line.startswith("Architectures:"))
+          expected = {"iphoneos-arm", "iphoneos-arm64", "iphoneos-arm64e", "all"}
+          assert set(arch) == expected, (arch, expected)
+          assert len(arch) == len(set(arch)), "Duplicate architectures"
+          packages = Path("Packages").read_text(encoding="utf-8")
+          package_archs = [line.split(":",1)[1].strip() for line in packages.splitlines() if line.startswith("Architecture:")]
+          assert package_archs, "No package stanzas"
+          assert set(package_archs).issubset(expected), (package_archs, expected)
+          # Package architectures remain unchanged. Declaring support for
+          # rootful does not turn existing iOS 16 rootless tweaks into rootful.
+          checksums = {"MD5Sum":"md5","SHA1":"sha1","SHA256":"sha256","SHA512":"sha512"}
+          section = None
+          found = {name:set() for name in checksums}
+          for line in lines:
+              if line.endswith(":") and line[:-1] in checksums:
+                  section = line[:-1]
+                  continue
+              if line and not line.startswith(" ") and ":" in line:
+                  section = None
+              if section and line.startswith(" "):
+                  fields = line.split()
+                  assert len(fields) == 3, (section, fields)
+                  digest, size, filename = fields
+                  assert filename in {"Packages","Packages.gz","Packages.bz2"}
+                  contents = Path(filename).read_bytes()
+                  assert len(contents) == int(size), (filename,"size mismatch")
+                  assert hashlib.new(checksums[section],contents).hexdigest() == digest, (section,filename)
+                  found[section].add(filename)
+          for section, files in found.items():
+              assert files == {"Packages","Packages.gz","Packages.bz2"}, (section,files)
+          print("PASS: Release supports rootful/rootless/RootHide and every index checksum matches")
+          print("NOTE: Current tweaks remain iOS 16-only; no rootful package was fabricated")
+          PY
