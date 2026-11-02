@@ -21,6 +21,27 @@ Name: DuoBar (RootHide)
 Depiction: https://rbx9.github.io/depictions/duobar-v2.html
 SileoDepiction: https://rbx9.github.io/depictions/duobar-v2.json
 
+Package: local.duobar.ios14
+Version: 2.7.2~ios14beta1
+Architecture: iphoneos-arm
+Maintainer: RBx9
+Installed-Size: 276
+Depends: preferenceloader, firmware (>= 14.0), firmware (<< 15.0)
+Conflicts: local.duobar, local.duobar.rootless
+Filename: debs/DuoBar_2.7.2_ios14_Taurine_beta1.deb
+Size: 87258
+MD5sum: 19373ed8a3c094a3fb0c218d68694427
+SHA1: 54cf736408057698904eaec28adec347e317279a
+SHA256: de9e37354ed56d8be34e5409ccfdddd7e3883dde9702eb7a07bfa633d2087fcf
+Section: Tweaks
+Priority: optional
+Homepage: https://github.com/RBx9/DuoBar
+Description: Experimental DuoBar status-bar battery ring for iOS 14 rootful jailbreaks such as Taurine.
+ Uses a guarded, SpringBoard-only status-bar hook and preserves native Wi-Fi and cellular icons while testing compatibility.
+ Not tested on physical iOS 14.3 yet. Do not install on iOS 16.
+Author: RBx9
+Name: DuoBar (iOS 14 Taurine Beta)
+
 Package: local.duobar.rootless
 Version: 2.7.2
 Architecture: iphoneos-arm64
