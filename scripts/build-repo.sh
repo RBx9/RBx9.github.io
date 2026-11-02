@@ -14,7 +14,7 @@ while IFS='|' read -r url name expected || [[ -n "$url" ]]; do
       echo "ERROR: Missing pinned source package: $url" >&2
       exit 1
     fi
-  elif if [[ ! "$url" =~ ^https://github\.com/[^/]+/[^/]+/releases/download/[^/]+/[^/]+\.deb$ ]]; then
+  elif [[ ! "$url" =~ ^https://github\.com/[^/]+/[^/]+/releases/download/[^/]+/[^/]+\.deb$ ]]; then
     echo "ERROR: Only GitHub Release .deb URLs are accepted: $url" >&2
     exit 1
   fi
