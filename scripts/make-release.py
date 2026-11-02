@@ -17,7 +17,7 @@ lines = [
     "Codename: ios",
     "Components: main",
     "Version: 1.0",
-    "Architectures: iphoneos-arm64e iphoneos-arm64 all",
+    "Architectures: iphoneos-arm iphoneos-arm64 iphoneos-arm64e all",
     f"Description: {release_description}",
     f"Date: {format_datetime(datetime.now(timezone.utc), usegmt=True)}",
 ]

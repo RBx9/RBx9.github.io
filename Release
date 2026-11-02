@@ -4,7 +4,7 @@ Suite: stable
 Codename: ios
 Components: main
 Version: 1.0
-Architectures: iphoneos-arm64e iphoneos-arm64 all
+Architectures: iphoneos-arm iphoneos-arm64 iphoneos-arm64e all
 Description: RBx9's jailbreak tweak repository for Sileo
 Date: Sun, 01 Nov 2026 02:42:41 GMT
 MD5Sum:
