@@ -9,6 +9,14 @@ A reusable Sileo / APT repository for jailbreak tweaks developed by **RBx9**. Cu
 **Sileo source URL:**
 https://rbx9.github.io/
 
+## Supported jailbreak environments
+The same repository URL supports:
+- **Rootful** (`iphoneos-arm`) — including iOS 14.3 with Taurine or unc0ver.
+- **Rootless** (`iphoneos-arm64`) — Dopamine or palera1n rootless.
+- **RootHide** (`iphoneos-arm64e`).
+
+The source may be added on iOS 14.3, but there are currently **no iOS 14-compatible packages** in this repo: the DuoBar builds require iOS 16. Adding the rootful architecture to the source metadata does **not** make those builds installable on iOS 14.
+
 ## Install in Sileo
 1. Open Sileo → Sources → +.
 2. Paste `https://rbx9.github.io/`.
