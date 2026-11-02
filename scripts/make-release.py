@@ -17,7 +17,10 @@ lines = [
     "Codename: ios",
     "Components: main",
     "Version: 1.0",
-    "Architectures: iphoneos-arm64e iphoneos-arm64 all",
+    # One flat source supports classic rootful, modern rootless, and RootHide.
+    # APT/Sileo selects package stanzas by their actual Architecture field;
+    # including iphoneos-arm here does not make iOS 16-only tweaks compatible.
+    "Architectures: iphoneos-arm iphoneos-arm64 iphoneos-arm64e all",
     f"Description: {release_description}",
     f"Date: {format_datetime(datetime.now(timezone.utc), usegmt=True)}",
 ]
