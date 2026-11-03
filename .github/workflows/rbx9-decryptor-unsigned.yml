@@ -1,0 +1,59 @@
+name: RBx9 IPA Decryptor - unsigned IPA
+on:
+  push:
+    branches:
+      - build/rbx9-ipa-decryptor-v0.1
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack RBx9 Xcode source
+        run: |
+          mkdir -p "$RUNNER_TEMP/rbx9-source"
+          unzip -q RBx9-IPA-Decryptor-v0.1-source.zip -d "$RUNNER_TEMP/rbx9-source"
+      - name: Resolve Swift packages
+        working-directory: ${{ runner.temp }}/rbx9-source/RBx9-IPA-Decryptor
+        run: |
+          xcodebuild -resolvePackageDependencies -project RBx9Decryptor.xcodeproj -scheme RBx9Decryptor
+      - name: Compile for physical iPhone without signing
+        working-directory: ${{ runner.temp }}/rbx9-source/RBx9-IPA-Decryptor
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project RBx9Decryptor.xcodeproj \
+            -scheme RBx9Decryptor \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/rbx9-build" \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee "$RUNNER_TEMP/rbx9-build.log"
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          set -e
+          APP="$RUNNER_TEMP/rbx9-build/Build/Products/Release-iphoneos/RBx9Decryptor.app"
+          test -d "$APP"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          ditto "$APP" "$RUNNER_TEMP/ipa/Payload/RBx9Decryptor.app"
+          cd "$RUNNER_TEMP/ipa"
+          zip -qry "$GITHUB_WORKSPACE/RBx9Decryptor-unsigned.ipa" Payload
+          test -s "$GITHUB_WORKSPACE/RBx9Decryptor-unsigned.ipa"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RBx9Decryptor-unsigned-IPA
+          path: RBx9Decryptor-unsigned.ipa
+          if-no-files-found: error
+      - name: Attach build log if unsuccessful
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RBx9Decryptor-build-log
+          path: ${{ runner.temp }}/rbx9-build.log
+          if-no-files-found: ignore
