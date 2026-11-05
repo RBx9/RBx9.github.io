@@ -1,58 +1,57 @@
-name: RBx9 Signer iOS 16+ Build
+name: Export RBx9 complete source for Claude (no publishing)
 
 on:
   push:
-    branches: [fix/rbx9-signer-ready-recovery-layout-private-1-3-19]
-    paths:
-      - 'rbx9-signer/**'
-      - '.github/workflows/build-rbx9-signer.yml'
+    branches: [exports/rbx9-complete-source-handoff-2026-11-05]
+    paths: ['.github/workflows/export-rbx9-source.yml']
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: rbx9-signer-build-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  build-rbx9:
-    runs-on: macos-26
-    timeout-minutes: 50
+  export:
+    runs-on: macos-15
+    timeout-minutes: 30
     steps:
-      - name: Checkout isolated RBx9 build branch
+      - name: Checkout private Signer development snapshot
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Fetch Feather GPL-3.0 source
+      - name: Retrieve Source Manager private development source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p export/RBx9-SourceManager
+          git fetch --no-tags --depth=1 origin feature/dylib-source-library-no-publish
+          MANAGER_SHA="$(git rev-parse FETCH_HEAD)"
+          git archive "$MANAGER_SHA" source-manager .github/workflows/test-dylib-source-manager.yml | tar -x -C export/RBx9-SourceManager
+          echo "$MANAGER_SHA" > export/RBx9-SourceManager/SOURCE_COMMIT.txt
+          test -f export/RBx9-SourceManager/source-manager/App/RBx9SourceManagerApp.swift
+          test -f export/RBx9-SourceManager/source-manager/App/RBx9DylibVault.swift
+
+      - name: Retrieve complete upstream Feather source including submodules
         shell: bash
         run: |
           set -euo pipefail
           git clone --depth 1 --recurse-submodules --shallow-submodules \
             https://github.com/claration/feather.git feather
-          test -f feather/LICENSE
-          test -f feather/Feather.xcodeproj/project.pbxproj
+          mkdir -p export/RBx9-Signer
+          git -C feather rev-parse HEAD > export/RBx9-Signer/FEATHER_BASE_COMMIT.txt
+          git rev-parse HEAD > export/RBx9-Signer/RBX9_SOURCE_COMMIT.txt
 
-      - name: Prepare selected RBx9 icon
+      - name: Generate RBx9 selected icon and optional appearance icons
         shell: bash
         run: |
           set -euo pipefail
-          test -f rbx9-signer/icon-base64.txt
           base64 -D -i rbx9-signer/icon-base64.txt -o rbx9-source-icon.jpg
           sips -s format png rbx9-source-icon.jpg --out rbx9-source-icon.png
           sips -z 1024 1024 rbx9-source-icon.png
-          sips -g pixelWidth -g pixelHeight rbx9-source-icon.png
-
-      - name: Generate six optional RBx9 icon designs
-        shell: bash
-        run: |
-          set -euo pipefail
           swift rbx9-signer/make_alternates.swift rbx9-source-icon.png rbx9-alt-icons
           test "$(find rbx9-alt-icons -type f -name '*.png' | wc -l | tr -d ' ')" = 12
-          # Original primary icon is left untouched.
 
-      - name: Apply RBx9 customizations
+      - name: Apply every RBx9 Signer source modification up to 1.3.19
         shell: bash
         run: |
           set -euo pipefail
@@ -71,8 +70,6 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_7.py
           python3 rbx9-signer/upgrade_v1_3_8.py
           python3 rbx9-signer/upgrade_v1_3_9.py
-          # Remove the separate SwiftUI animation, then substitute RBx9
-          # in Feather's original iOS system launch storyboard.
           python3 rbx9-signer/upgrade_v1_3_10.py
           python3 rbx9-signer/upgrade_v1_3_11.py
           python3 rbx9-signer/upgrade_v1_3_12.py
@@ -83,119 +80,48 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_17.py
           python3 rbx9-signer/upgrade_v1_3_18.py
           python3 rbx9-signer/upgrade_v1_3_19.py
-          grep -F 'Label("Retry Install"' feather/Feather/Views/Library/Install/InstallPreviewView.swift
-          grep -F 'Task.sleep(nanoseconds: 9_000_000_000)' feather/Feather/Views/Library/Install/InstallPreviewView.swift
-          grep -F 'recoveryExpanded: $rbx9RecoveryExpanded' feather/Feather/Views/Library/LibraryView.swift
-          grep -F 'height(rbx9RecoveryExpanded ? 400 : 200)' feather/Feather/Views/Library/LibraryView.swift
-          grep -F 'Label("Web Installer"' feather/Feather/Views/Library/Install/InstallPreviewView.swift
-          grep -F 'RBx9DeleteTweakSheet' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'confirmedDeletionAfterDismiss' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'Text("Downloaded")' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F '.searchable(text: $searchText' feather/Feather/Views/Signing/SigningTweaksView.swift
-          ! grep -Fq '"Delete stored file?"' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'case dylibs' feather/Feather/Views/TabView/TabEnum.swift
-          grep -F '.dylibs,' feather/Feather/Views/TabView/TabEnum.swift
-          grep -F 'RBx9RemoteDylibLibraryView' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'ipa-source/dylibs.json' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'SHA-256 checksum mismatch' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'Browse & Inject Source Dylibs' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'View Error Details' feather/Feather/Views/Library/Install/InstallPreviewView.swift
-          grep -F 'Copy Details' feather/Feather/Views/Library/Install/InstallPreviewView.swift
-          grep -F 'RBx9 Dark (Default)' feather/Feather/Views/Settings/App\ Icon/AppIconView.swift
           grep -F 'FEATHER_PROJECT_VERSION=1.3.19' feather/Feather.xcconfig
-          test -f rbx9-signer/icon-original-before-dark-base64.txt
-          test -f feather/Feather/Resources/Assets.xcassets/AppIcon.appiconset/rbx9.png
-          grep -F '.swipeActions(edge: .trailing, allowsFullSwipe: true)' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'Label("Share / Export", systemImage: "square.and.arrow.up")' feather/Feather/Views/Signing/SigningTweaksView.swift
-          ! grep -Fq 'RBx9StoredTweakExportButton' feather/Feather/Views/Signing/SigningTweaksView.swift
-          ! grep -Fq '.swipeActions(edge: .leading' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'func rename(_ item: RBx9StoredTweak' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'ShareLink(item:' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'Button("Save")' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'RBx9DylibStorage' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'Developing and Modification' feather/Feather/Views/Settings/About/AboutView.swift
-          ! grep -Fq 'rbx9ShowingStartup' feather/Feather/FeatherApp.swift
-          ! grep -Fq '230_000_000' feather/Feather/FeatherApp.swift
-          ! grep -Fq 'RBx9TransmissionStartup' feather/Feather/FeatherApp.swift
-          ! grep -Fq 'image="Glyph"' "feather/Feather/Resources/Launch Screen.storyboard"
-          grep -F 'image="RBx9LaunchIcon"' "feather/Feather/Resources/Launch Screen.storyboard"
-          grep -F '<image name="RBx9LaunchIcon"' "feather/Feather/Resources/Launch Screen.storyboard"
-          grep -F 'red="0.022" green="0.045" blue="0.085"' "feather/Feather/Resources/Launch Screen.storyboard"
-          grep -F 'com.rbx9.signer.ipa' feather/Feather/Resources/Info.plist
-          test -f feather/Feather/Resources/Assets.xcassets/RBx9LaunchIcon.imageset/rbx9-launch.png
-          grep -F 'FEATHER_PRODUCT_BUNDLE_IDENTIFIER=com.rbx9.signer' feather/Feather.xcconfig
-          grep -F 'Sign & Install' feather/Feather/Views/Signing/SigningView.swift
-          ! grep -Fq 'Dylib Changes Ready' feather/Feather/Views/Signing/Shared/SigningDylibView.swift
-          grep -F 'RBx9EditorActionBar' feather/Feather/Views/Signing/SigningTweaksView.swift
-          grep -F 'opensInstallerOnTap' feather/Feather/Views/Library/LibraryCellView.swift
-          grep -F 'selectedSigningAppPresenting = AnyApp(base: app)' feather/Feather/Views/Library/LibraryCellView.swift
-          ! grep -Fq '.onTapGesture {' feather/Feather/Views/Library/LibraryCellView.swift
-          grep -F 'Delete on Next Sign' feather/Feather/Views/Signing/Shared/SigningDylibView.swift
-          grep -F 'Label("Import from Files", systemImage: "folder.badge.plus")' feather/Feather/Views/Library/LibraryView.swift
-          grep -F 'Injecting Tweaks…' feather/Feather/Views/Signing/SigningView.swift
-          grep -F 'Inject & Install' feather/Feather/Views/Signing/RBx9EditorActionBar.swift
-          ! grep -Fq 'DisclosureGroup(.localized("Modify"))' feather/Feather/Views/Signing/SigningView.swift
+          grep -F 'rbx9RecoveryCard' feather/Feather/Views/Library/Install/InstallPreviewView.swift
+          grep -F 'confirmedDeletionAfterDismiss' feather/Feather/Views/Signing/SigningTweaksView.swift
+          test -f feather/LICENSE
 
-      - name: Build unsigned app with Xcode
+      - name: Assemble complete, buildable source trees
         shell: bash
         run: |
           set -euo pipefail
-          xcodebuild -version
-          cd feather
-          # Avoid an Xcode SwiftPM workspace crash caused by stale pin counts.
-          rm -f Feather.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
-          rm -f Feather.xcworkspace/xcshareddata/swiftpm/Package.resolved
-          xcodebuild \
-            -workspace Feather.xcworkspace \
-            -scheme Feather \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath "$RUNNER_TEMP/rbx9-build" \
-            -skipPackagePluginValidation \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES=NO \
-            build > "$RUNNER_TEMP/rbx9-build.log" 2>&1 || {
-              grep -E 'error:|fatal error:|BUILD FAILED' "$RUNNER_TEMP/rbx9-build.log" | tail -100 || true
-              tail -80 "$RUNNER_TEMP/rbx9-build.log"
-              exit 1
-            }
-          tail -15 "$RUNNER_TEMP/rbx9-build.log"
-
-      - name: Package IPA for ESign/Feather signing
-        shell: bash
-        run: |
-          set -euo pipefail
-          APP="$RUNNER_TEMP/rbx9-build/Build/Products/Release-iphoneos/Feather.app"
-          test -d "$APP"
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$APP/Info.plist"
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist"
-          mkdir -p "$RUNNER_TEMP/rbx9-package/Payload"
-          # Xcode outputs a symlink in Build/Products when DEPLOYMENT_LOCATION=YES.
-          # Dereference it; otherwise IPA contains only a symbolic link (a few hundred bytes).
-          cp -RL "$APP" "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app"
-          test -f "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app/Info.plist"
+          mkdir -p export/RBx9-Signer/Build-Patches export/RBx9-Signer/Patched-Feather
+          rsync -a --exclude='.git' feather/ export/RBx9-Signer/Patched-Feather/
+          rsync -a rbx9-signer/ export/RBx9-Signer/Build-Patches/
+          cp .github/workflows/build-rbx9-signer.yml export/RBx9-Signer/build-rbx9-signer-private.yml
+          test -f export/RBx9-Signer/Patched-Feather/Feather.xcodeproj/project.pbxproj
+          test -f export/RBx9-Signer/Patched-Feather/Feather/Views/Library/Install/InstallPreviewView.swift
+          test -f export/RBx9-Signer/Build-Patches/upgrade_v1_3_19.py
+          command -v xcodegen >/dev/null || brew install xcodegen
+          swift export/RBx9-SourceManager/source-manager/scripts/create_icon.swift
           (
-            cd "$RUNNER_TEMP/rbx9-package"
-            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.3.19-unsigned.ipa" Payload
+            cd export/RBx9-SourceManager/source-manager
+            xcodegen generate
           )
-          # Guard against empty/invalid packages before uploading them.
-          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.3.19-unsigned.ipa" | tail -1
-          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.3.19-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
-          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.3.19-unsigned.ipa")" -gt 1000000
-          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.3.19-unsigned.ipa"
+          test -f export/RBx9-SourceManager/source-manager/RBx9SourceManager.xcodeproj/project.pbxproj
+          test -f export/RBx9-SourceManager/source-manager/App/Assets.xcassets/AppIcon.appiconset/Contents.json
 
-      - name: Upload actual RBx9 IPA
+      - name: Package all source code without credentials or release publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e export/RBx9-Signer/Patched-Feather/.git
+          find export -type f | sort > SOURCE_FILE_LIST.txt
+          printf '%s\n' 'SOURCE: RBx9 Signer v1.3.19 private with patched Feather source, all build patch scripts, and original GPL-3.0 license.' > EXPORT_NOTES.txt
+          printf '%s\n' 'SOURCE: Source Manager latest unpublished Dylib Library preview with storage deletion fix and generated Xcode project.' >> EXPORT_NOTES.txt
+          printf '%s\n' 'These are sources, not signed IPAs. No public releases or live catalog updates are made.' >> EXPORT_NOTES.txt
+          zip -qry RBx9-Both-Apps-Complete-Source.zip export SOURCE_FILE_LIST.txt EXPORT_NOTES.txt
+          unzip -tq RBx9-Both-Apps-Complete-Source.zip
+          ls -lh RBx9-Both-Apps-Complete-Source.zip
+
+      - name: Upload source-only bundle as private-test workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RBx9-v1.3.19-iOS16plus-unsigned-IPA
-          path: RBx9-v1.3.19-unsigned.ipa
+          name: RBx9-Both-Apps-Complete-Source
+          path: RBx9-Both-Apps-Complete-Source.zip
+          retention-days: 14
           if-no-files-found: error
-
-      - name: Upload build log if unsuccessful
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: RBx9-build-log
-          path: ${{ runner.temp }}/rbx9-build.log
-          if-no-files-found: ignore
