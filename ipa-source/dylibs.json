@@ -21,8 +21,19 @@
       "sha256" : "9c5b70bac141d490279b450da2faca13d19373ab4503325237e1ece13b8868e3",
       "size" : 418448,
       "version" : "2.7"
+    },
+    {
+      "compatibility" : "",
+      "description" : "Twitter",
+      "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-dylib-1793901030-BF74FE23\/XRBx9_v1.0.4.dylib",
+      "fileName" : "XRBx9_v1.0.4.dylib",
+      "id" : "xrbx9_v1.0.4-for-twitter",
+      "name" : "XRBx9_v1.0.4 for twitter",
+      "sha256" : "8b11b9f7d98ae94c68bcf3dc1df0127c64cbd3ef4963b7a04df203242ccbc6c0",
+      "size" : 10234840,
+      "version" : "1.0.4"
     }
   ],
   "schemaVersion" : 1,
-  "updatedAt" : "2026-11-05T16:21:01Z"
+  "updatedAt" : "2026-11-05T17:51:20Z"
 }
