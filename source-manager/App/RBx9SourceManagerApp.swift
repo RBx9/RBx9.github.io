@@ -588,9 +588,21 @@ final class GitHubManager: ObservableObject {
                 )
                 let code=(response as? HTTPURLResponse)?.statusCode ?? 0
                 if (200...299).contains(code) {
-                    let asset = try parse(data)
                     finishTransfer()
-                    return asset
+                    if let asset = try? parse(data), asset["name"] as? String == name {
+                        return asset
+                    }
+                    // A background URLSession can finish with an empty or partial
+                    // response body even though GitHub accepted the asset. Do not
+                    // report that as a failed upload; confirm the asset on GitHub.
+                    for _ in 0..<6 {
+                        if let confirmed = await existingAsset(releaseID:releaseID,name:name),
+                           (confirmed["size"] as? NSNumber)?.intValue == localSize {
+                            return confirmed
+                        }
+                        try await Task.sleep(nanoseconds:1_500_000_000)
+                    }
+                    throw ManagerError.message("The upload finished, but GitHub has not confirmed the asset yet. It is saved; try again in a moment.")
                 }
                 if code == 422, let existing = await existingAsset(releaseID:releaseID,name:name) {
                     if existing["size"] as? Int == localSize {
@@ -898,6 +910,7 @@ final class GitHubManager: ObservableObject {
         guard !busy else { return }
         busy=true
         var succeeded=false
+        var step="Preparing the release"
         defer {
             busy=false
             finishTransfer()
@@ -936,42 +949,45 @@ final class GitHubManager: ObservableObject {
             guard let releaseID=pending.releaseID else {
                 throw ManagerError.message("The dylib release has no ID.")
             }
+            step="Uploading the dylib file"
             _ = try await uploadReleaseAsset(fileURL,name:pending.fileName,
                                                releaseID:releaseID)
             // A draft Release advertises /untagged-.../ URLs. Those expire
             // when GitHub publishes it. Never cache the draft asset URL.
+            step="Publishing the GitHub release"
             _ = try await apiWhenConnected("PATCH",
                 "/repos/\(repository)/releases/\(releaseID)",
                 body:try json(["draft":false]))
             // Fetch the published Release again; its final asset URL is
             // canonical and safe to advertise in the public dylib catalog.
-            let published = try parse(try await apiWhenConnected("GET",
-                "/repos/\(repository)/releases/\(releaseID)"))
-            guard published["draft"] as? Bool == false,
-                  published["tag_name"] as? String == pending.tag,
-                  let assets = published["assets"] as? [[String:Any]],
-                  let finalAsset = assets.first(where:{
-                      $0["name"] as? String == pending.fileName &&
-                      ($0["size"] as? Int) == Int(pending.bytes) &&
-                      ($0["state"] as? String) == "uploaded"
-                  }),
-                  let download = finalAsset["browser_download_url"] as? String,
-                  let remote = URL(string:download),
-                  remote.scheme == "https",
-                  remote.host == "github.com",
-                  remote.path.hasPrefix("/\(repository)/releases/download/\(pending.tag)/"),
-                  remote.lastPathComponent == pending.fileName else {
-                throw ManagerError.message("GitHub has not published the final dylib asset URL. The upload is saved; retry.")
+            // GitHub can take a moment to show the asset after publishing, so
+            // retry briefly instead of failing a successful upload.
+            step="Confirming the published asset"
+            var confirmedDownload:String? = nil
+            for attempt in 0..<6 {
+                let published = try parse(try await apiWhenConnected("GET",
+                    "/repos/\(repository)/releases/\(releaseID)"))
+                if published["draft"] as? Bool == false,
+                   published["tag_name"] as? String == pending.tag,
+                   let assets = published["assets"] as? [[String:Any]],
+                   let finalAsset = assets.first(where:{
+                       $0["name"] as? String == pending.fileName &&
+                       ($0["size"] as? NSNumber)?.int64Value == pending.bytes &&
+                       ($0["state"] as? String) == "uploaded"
+                   }),
+                   let candidate = finalAsset["browser_download_url"] as? String,
+                   let remote = URL(string:candidate),
+                   remote.scheme == "https",
+                   remote.host?.lowercased() == "github.com",
+                   remote.path.lowercased().hasPrefix("/\(repository)/releases/download/\(pending.tag)/".lowercased()),
+                   remote.lastPathComponent == pending.fileName {
+                    confirmedDownload = candidate
+                    break
+                }
+                if attempt < 5 { try await Task.sleep(nanoseconds:2_000_000_000) }
             }
-            let (indexData,_)=try await file("ipa-source/dylibs.json")
-            var catalog=try parse(indexData)
-            guard catalog["schemaVersion"] as? Int == 1,
-                  var libraries=catalog["libraries"] as? [[String:Any]] else {
-                throw ManagerError.message("The online dylib source format is unsupported.")
-            }
-            if let matched=libraries.first(where:{$0["sha256"] as? String == pending.sha256 &&
-                                                  $0["id"] as? String != pending.id}) {
-                throw ManagerError.message("This exact dylib is already published as \(matched["name"] as? String ?? "another entry").")
+            guard let download = confirmedDownload else {
+                throw ManagerError.message("GitHub has not published the final dylib asset URL yet. The upload is saved; tap retry in a moment.")
             }
             let entry:[String:Any]=[
                 "id":pending.id,
@@ -984,23 +1000,57 @@ final class GitHubManager: ObservableObject {
                 "sha256":pending.sha256,
                 "downloadURL":download
             ]
-            libraries.removeAll(where:{$0["id"] as? String == pending.id})
-            libraries.append(entry)
-            guard libraries.count <= 500 else { throw ManagerError.message("Dylib source is full.") }
-            libraries.sort {
-                ($0["name"] as? String ?? "").localizedStandardCompare(
-                    $1["name"] as? String ?? "") == .orderedAscending
+            // Re-read the catalog on every attempt so a concurrent edit (HTTP 409
+            // or 422) is merged instead of reported as a failed upload.
+            step="Updating the dylib source list"
+            for attempt in 0..<3 {
+                let (indexData,_)=try await file("ipa-source/dylibs.json")
+                var catalog=try parse(indexData)
+                guard catalog["schemaVersion"] as? Int == 1,
+                      var libraries=catalog["libraries"] as? [[String:Any]] else {
+                    throw ManagerError.message("The online dylib source format is unsupported.")
+                }
+                if let matched=libraries.first(where:{$0["sha256"] as? String == pending.sha256 &&
+                                                      $0["id"] as? String != pending.id}) {
+                    throw ManagerError.message("This exact dylib is already published as \(matched["name"] as? String ?? "another entry").")
+                }
+                // Already listed from an earlier attempt: nothing left to write.
+                if let existing=libraries.first(where:{$0["id"] as? String == pending.id}),
+                   existing["sha256"] as? String == pending.sha256,
+                   existing["downloadURL"] as? String == download,
+                   existing["name"] as? String == pending.name,
+                   existing["version"] as? String == pending.version {
+                    break
+                }
+                libraries.removeAll(where:{$0["id"] as? String == pending.id})
+                libraries.append(entry)
+                guard libraries.count <= 500 else { throw ManagerError.message("Dylib source is full.") }
+                libraries.sort {
+                    ($0["name"] as? String ?? "").localizedStandardCompare(
+                        $1["name"] as? String ?? "") == .orderedAscending
+                }
+                catalog["libraries"]=libraries
+                catalog["updatedAt"]=ISO8601DateFormatter().string(from:Date())
+                do {
+                    try await put("ipa-source/dylibs.json",data:try json(catalog))
+                    break
+                } catch {
+                    let text=error.localizedDescription
+                    let conflict=text.contains("GitHub 409") || text.contains("GitHub 422")
+                    if !conflict || attempt == 2 { throw error }
+                    try await Task.sleep(nanoseconds:1_000_000_000)
+                }
             }
-            catalog["libraries"]=libraries
-            catalog["updatedAt"]=ISO8601DateFormatter().string(from:Date())
-            try await put("ipa-source/dylibs.json",data:try json(catalog))
+            // The upload and catalog entry are done. Nothing after this may
+            // turn a completed publication into an error.
             succeeded=true
+            status="Published \(pending.name) to the RBx9 Dylib Source."
             await refresh()
             status="Published \(pending.name) to the RBx9 Dylib Source."
-            alertMessage="Dylib uploaded and indexed. Refresh the Dylibs tab in RBx9 Signer after GitHub Pages deploys."
+            alertMessage="\(pending.name) was uploaded and published. Refresh the Dylibs tab in RBx9 Signer after GitHub Pages deploys."
         } catch {
-            status="Dylib publication paused: " + error.localizedDescription
-            alertMessage="The selected dylib remains staged for retry. " + error.localizedDescription
+            status="Dylib publication paused at \"\(step)\": " + error.localizedDescription
+            alertMessage="The selected dylib remains staged for retry.\n\nStep: \(step)\n\(error.localizedDescription)"
         }
     }
 
@@ -1019,6 +1069,93 @@ final class GitHubManager: ObservableObject {
             try await self.put("ipa-source/dylibs.json",data:try self.json(catalog))
         }
         await refresh()
+    }
+
+    /// Rename a published dylib. The display name is metadata only. If the file
+    /// name also changes, the GitHub Release asset is renamed first and its new
+    /// canonical URL is what gets written to the catalog; if writing the catalog
+    /// fails, the asset name is restored so the old link keeps working.
+    func renameSourceDylib(id:String,displayName:String,fileName:String) async {
+        guard !busy else { alertMessage="Please complete the current operation."; return }
+        let title=displayName.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard !title.isEmpty, title.count <= 120 else {
+            alertMessage="Enter a display name of up to 120 characters."
+            return
+        }
+        await work("Renaming dylib") {
+            let newFile=try self.checkedPublicationName(fileName,ext:"dylib")
+            let (data,_)=try await self.file("ipa-source/dylibs.json")
+            var catalog=try self.parse(data)
+            guard catalog["schemaVersion"] as? Int == 1,
+                  var libraries=catalog["libraries"] as? [[String:Any]],
+                  let index=libraries.firstIndex(where:{$0["id"] as? String == id}) else {
+                throw ManagerError.message("That dylib is no longer in the online source. Refresh and try again.")
+            }
+            if libraries.contains(where:{
+                $0["id"] as? String != id &&
+                ($0["name"] as? String ?? "").caseInsensitiveCompare(title) == .orderedSame
+            }) {
+                throw ManagerError.message("Another published dylib already uses that name.")
+            }
+            var entry=libraries[index]
+            let oldFile=entry["fileName"] as? String ?? ""
+            var renamed:(assetID:Int,oldName:String)? = nil
+            if newFile != oldFile {
+                guard let oldURL=entry["downloadURL"] as? String, let url=URL(string:oldURL),
+                      url.pathComponents.count >= 7,
+                      url.pathComponents[3] == "releases",
+                      url.pathComponents[4] == "download" else {
+                    throw ManagerError.message("This entry's download link is not a GitHub Release asset, so its file name cannot be changed.")
+                }
+                let tag=url.pathComponents[5]
+                let release=try self.parse(try await self.api("GET",
+                    "/repos/\(repository)/releases/tags/\(tag)"))
+                guard let assets=release["assets"] as? [[String:Any]],
+                      let asset=assets.first(where:{$0["name"] as? String == oldFile}),
+                      let assetID=(asset["id"] as? NSNumber)?.intValue else {
+                    throw ManagerError.message("The release asset \(oldFile) was not found on GitHub.")
+                }
+                if assets.contains(where:{$0["name"] as? String == newFile}) {
+                    throw ManagerError.message("A file named \(newFile) already exists in that release.")
+                }
+                let updated=try self.parse(try await self.api("PATCH",
+                    "/repos/\(repository)/releases/assets/\(assetID)",
+                    body:try self.json(["name":newFile])))
+                guard let newURL=updated["browser_download_url"] as? String,
+                      let parsed=URL(string:newURL), parsed.scheme == "https",
+                      parsed.host?.lowercased() == "github.com",
+                      parsed.lastPathComponent == newFile else {
+                    _ = try? await self.api("PATCH",
+                        "/repos/\(repository)/releases/assets/\(assetID)",
+                        body:try self.json(["name":oldFile]))
+                    throw ManagerError.message("GitHub did not confirm the new file name. Nothing was changed.")
+                }
+                renamed=(assetID,oldFile)
+                entry["fileName"]=newFile
+                entry["downloadURL"]=newURL
+            }
+            entry["name"]=title
+            libraries[index]=entry
+            libraries.sort {
+                ($0["name"] as? String ?? "").localizedStandardCompare(
+                    $1["name"] as? String ?? "") == .orderedAscending
+            }
+            catalog["libraries"]=libraries
+            catalog["updatedAt"]=ISO8601DateFormatter().string(from:Date())
+            do {
+                try await self.put("ipa-source/dylibs.json",data:try self.json(catalog))
+            } catch {
+                if let renamed {
+                    _ = try? await self.api("PATCH",
+                        "/repos/\(repository)/releases/assets/\(renamed.assetID)",
+                        body:try self.json(["name":renamed.oldName]))
+                }
+                throw error
+            }
+        }
+        if status.hasPrefix("Saved to GitHub.") {
+            status="Renamed to \(title). Refresh the Dylibs tab in RBx9 Signer after GitHub Pages deploys."
+        }
     }
 
 }
@@ -1788,6 +1925,7 @@ struct OnlineDylibsScreen: View {
     @State private var summary=""
     @State private var compatibility=""
     @State private var remove:SourceDylib?
+    @State private var renaming:SourceDylib?
 
     var body:some View {
         NavigationStack {
@@ -1870,9 +2008,19 @@ struct OnlineDylibsScreen: View {
                                     Label("Download",systemImage:"arrow.down")
                                 }
                             }
+                            Button { renaming=item } label: {
+                                Label("Rename",systemImage:"pencil")
+                            }
                             Button(role:.destructive) { remove=item } label: {
                                 Label("Remove from Source",systemImage:"trash")
                             }
+                        }
+                        .swipeActions(edge:.leading,allowsFullSwipe:false) {
+                            Button { renaming=item } label: {
+                                Label("Rename",systemImage:"pencil")
+                            }
+                            .tint(Theme.cyan)
+                            .disabled(manager.busy || !manager.connected)
                         }
                         .swipeActions(edge:.trailing,allowsFullSwipe:false) {
                             Button(role:.destructive) { remove=item } label: {
@@ -1909,6 +2057,17 @@ struct OnlineDylibsScreen: View {
                     }
                     importer=false
                 },onCancel:{ importer=false })
+            }
+            .sheet(item:$renaming) { item in
+                RBx9RenameSourceDylibSheet(item:item,
+                    onSave:{ newName,newFile in
+                        renaming=nil
+                        Task { await manager.renameSourceDylib(id:item.id,
+                            displayName:newName,fileName:newFile) }
+                    },
+                    onCancel:{ renaming=nil })
+                .presentationDetents([.height(430)])
+                .presentationDragIndicator(.visible)
             }
             .confirmationDialog("Remove \(remove?.name ?? "dylib") from the source?",
                 isPresented:Binding(get:{ remove != nil },
@@ -2020,6 +2179,87 @@ struct SettingsScreen:View {
     }
 }
 
+
+// MARK: - Rename a published dylib
+private struct RBx9RenameSourceDylibSheet: View {
+    let item: SourceDylib
+    let onSave: (String,String) -> Void
+    let onCancel: () -> Void
+    @State private var displayName: String
+    @State private var fileBase: String
+
+    init(item: SourceDylib,
+         onSave: @escaping (String,String) -> Void,
+         onCancel: @escaping () -> Void) {
+        self.item = item
+        self.onSave = onSave
+        self.onCancel = onCancel
+        _displayName = State(initialValue: item.name)
+        var base = item.fileName
+        if base.lowercased().hasSuffix(".dylib") { base = String(base.dropLast(6)) }
+        _fileBase = State(initialValue: base)
+    }
+
+    private var changed: Bool {
+        displayName.trimmingCharacters(in:.whitespacesAndNewlines) != item.name
+            || fileBase.trimmingCharacters(in:.whitespacesAndNewlines) + ".dylib" != item.fileName
+    }
+    private var valid: Bool {
+        !displayName.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty
+            && !fileBase.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment:.leading,spacing:13) {
+            Label("Rename dylib",systemImage:"pencil.circle.fill")
+                .font(.headline)
+                .foregroundStyle(Theme.cyan)
+                .padding(.top,18)
+            Text("Display name")
+                .font(.caption).foregroundStyle(.secondary)
+            TextField("Display name",text:$displayName)
+                .textFieldStyle(.roundedBorder)
+            Text("File name")
+                .font(.caption).foregroundStyle(.secondary)
+            HStack(spacing:6) {
+                TextField("File name",text:$fileBase)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Text(".dylib").font(.subheadline).foregroundStyle(.secondary)
+            }
+            Text("Changing the file name renames the GitHub Release asset and updates the download link. Signer copies you already downloaded stay usable.")
+                .font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal:false,vertical:true)
+            Spacer(minLength:0)
+            Button {
+                onSave(displayName,fileBase)
+            } label: {
+                Text("Save name")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth:.infinity)
+                    .padding(.vertical,12)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.black)
+            .background(Theme.cyan,in:RoundedRectangle(cornerRadius:14))
+            .opacity(changed && valid ? 1 : 0.4)
+            .disabled(!changed || !valid)
+            Button(action:onCancel) {
+                Text("Cancel")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth:.infinity)
+                    .padding(.vertical,12)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Theme.cyan)
+        }
+        .padding(.horizontal,23)
+        .padding(.bottom,16)
+        .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading)
+        .background(Theme.background)
+    }
+}
 
 // MARK: - RBx9 Source Manager storage delete confirmation
 // Finishes dismissing before the storage list is refreshed by its parent.

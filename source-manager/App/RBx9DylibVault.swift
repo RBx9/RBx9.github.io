@@ -29,6 +29,9 @@ final class RBx9DylibVault: ObservableObject {
             .appendingPathComponent("RBx9DylibStorage",isDirectory:true)
     }
 
+    private var hashCache: [String:(size:Int64,modified:Date?,hash:String)] = [:]
+    private var didMigrateLocal = false
+
     private init() { refresh() }
 
     private func sha256(_ url:URL) throws -> String {
@@ -48,7 +51,10 @@ final class RBx9DylibVault: ObservableObject {
         try? FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
         let local=FileManager.default.urls(for:.documentDirectory,in:.userDomainMask)[0]
             .appendingPathComponent("RBx9DylibStorage",isDirectory:true)
-        if directory.standardizedFileURL != local.standardizedFileURL {
+        // Copy legacy local files into the shared container only once per launch;
+        // later refreshes must not re-scan the legacy folder.
+        if !didMigrateLocal, directory.standardizedFileURL != local.standardizedFileURL {
+            didMigrateLocal = true
             for file in (try? FileManager.default.contentsOfDirectory(
                 at:local,includingPropertiesForKeys:nil)) ?? [] {
                 guard file.pathExtension.lowercased()=="dylib" else { continue }
@@ -61,13 +67,24 @@ final class RBx9DylibVault: ObservableObject {
         let files = (try? FileManager.default.contentsOfDirectory(at:directory,
             includingPropertiesForKeys:[.isRegularFileKey,.fileSizeKey],
             options:[.skipsHiddenFiles])) ?? []
+        var seen = Set<String>()
         items = files.compactMap { url -> SavedDylib? in
             guard url.pathExtension.lowercased() == "dylib",
-                  (try? url.resourceValues(forKeys:[.isRegularFileKey]))?.isRegularFile == true,
-                  let hash = try? sha256(url) else { return nil }
-            let bytes = Int64((try? url.resourceValues(forKeys:[.fileSizeKey]))?.fileSize ?? 0)
+                  let values = try? url.resourceValues(forKeys:[.isRegularFileKey,.fileSizeKey,.contentModificationDateKey]),
+                  values.isRegularFile == true else { return nil }
+            let bytes = Int64(values.fileSize ?? 0)
+            let modified = values.contentModificationDate
+            let key = url.standardizedFileURL.path
+            seen.insert(key)
+            // Reuse the SHA-256 unless size or modification date changed.
+            if let cached = hashCache[key], cached.size == bytes, cached.modified == modified {
+                return SavedDylib(url:url,hash:cached.hash,byteCount:bytes)
+            }
+            guard let hash = try? sha256(url) else { return nil }
+            hashCache[key] = (bytes,modified,hash)
             return SavedDylib(url:url,hash:hash,byteCount:bytes)
         }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        hashCache = hashCache.filter { seen.contains($0.key) }
     }
 
     enum SaveResult {
