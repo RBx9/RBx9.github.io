@@ -68,6 +68,44 @@ struct SourceDeb: Identifiable {
     var id: String { line }
 }
 
+struct SourceDylib: Identifiable {
+    let id: String
+    let name: String
+    let fileName: String
+    let version: String
+    let description: String
+    let compatibility: String
+    let sha256: String
+    let downloadURL: String
+    let size: Int64
+}
+struct PendingSourceDylib: Codable {
+    var localPath: String
+    var id: String
+    var name: String
+    var fileName: String
+    var version: String
+    var description: String
+    var compatibility: String
+    var sha256: String
+    var bytes: Int64
+    var tag: String
+    var releaseID: Int?
+}
+enum PendingSourceDylibStore {
+    private static var fileURL: URL {
+        RBx9PendingUploadStore.directory.appendingPathComponent("pending-dylib-source.json")
+    }
+    static func load() -> PendingSourceDylib? {
+        guard let data = try? Data(contentsOf: fileURL) else { return nil }
+        return try? JSONDecoder().decode(PendingSourceDylib.self, from: data)
+    }
+    static func save(_ value: PendingSourceDylib) throws {
+        try JSONEncoder().encode(value).write(to: fileURL, options: .atomic)
+    }
+    static func clear() { try? FileManager.default.removeItem(at: fileURL) }
+}
+
 @MainActor
 final class GitHubManager: ObservableObject {
     @Published var username: String = ""
@@ -75,6 +113,7 @@ final class GitHubManager: ObservableObject {
     @Published var status = ""
     @Published var apps: [SourceApp] = []
     @Published var debs: [SourceDeb] = []
+    @Published var dylibs: [SourceDylib] = []
     @Published var catalog: [String:Any] = [:]
     @Published var ipaName = "RBx9 IPA Library"
     @Published var ipaDescription = "Browse IPAs from RBx9."
@@ -96,6 +135,7 @@ final class GitHubManager: ObservableObject {
                 await refresh()
                 await resumePendingPublicationIfNeeded()
                 await resumeSavedInjectionIfNeeded()
+                await resumePendingDylibIfNeeded()
             }
         }
     }
@@ -235,6 +275,27 @@ final class GitHubManager: ObservableObject {
                 let cells = line.split(separator:"|",omittingEmptySubsequences:false)
                 guard cells.count == 3 else { return nil }
                 return SourceDeb(line:line,filename:String(cells[1]))
+            }
+            // The new dylib feed is independent of the IPA and Sileo indexes.
+            if let (dylibData, _) = try? await file("ipa-source/dylibs.json"),
+               let source = try? parse(dylibData),
+               let entries = source["libraries"] as? [[String:Any]] {
+                dylibs = entries.compactMap { record in
+                    guard let id = record["id"] as? String,
+                          let name = record["name"] as? String,
+                          let filename = record["fileName"] as? String,
+                          let version = record["version"] as? String,
+                          let sha256 = record["sha256"] as? String,
+                          let downloadURL = record["downloadURL"] as? String,
+                          let size = record["size"] as? NSNumber
+                    else { return nil }
+                    return SourceDylib(id:id, name:name, fileName:filename,
+                        version:version, description:record["description"] as? String ?? "",
+                        compatibility:record["compatibility"] as? String ?? "",
+                        sha256:sha256, downloadURL:downloadURL, size:size.int64Value)
+                }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            } else {
+                dylibs = []
             }
             if let (data,_) = try? await file("ipa-source/source-settings.json"),
                let obj = try? parse(data) {
@@ -767,6 +828,184 @@ final class GitHubManager: ObservableObject {
         }
     }
 
+    // MARK: - Online Dylib Source (separate catalog and Release assets)
+    // A source dylib is never auto-injected into another app.
+    @discardableResult
+    func publishSelectedDylib(_ staged:StagedSourceFile,
+                              displayName:String,version:String,
+                              description:String,compatibility:String) -> Bool {
+        guard !busy else { alertMessage="Please complete the current operation."; return false }
+        do {
+            let title=displayName.trimmingCharacters(in:.whitespacesAndNewlines)
+            let ver=version.trimmingCharacters(in:.whitespacesAndNewlines)
+            let desc=description.trimmingCharacters(in:.whitespacesAndNewlines)
+            let compat=compatibility.trimmingCharacters(in:.whitespacesAndNewlines)
+            guard !title.isEmpty && title.count <= 120 && !desc.isEmpty && desc.count <= 2000,
+                  compat.count <= 160, ver.range(of:"^[0-9][A-Za-z0-9._-]{0,32}$",
+                                                  options:.regularExpression) != nil else {
+                throw ManagerError.message("Enter a name, a version (e.g. 1.0), a description and optional compatibility details.")
+            }
+            let filename=try checkedPublicationName(staged.name,ext:"dylib")
+            let slug=title.lowercased()
+                .replacingOccurrences(of:"[^a-z0-9._-]",with:"-",
+                                      options:.regularExpression)
+            let identifier=String(slug.prefix(80)).trimmingCharacters(in:CharacterSet(charactersIn:"._-"))
+            guard !identifier.isEmpty else { throw ManagerError.message("Invalid dylib title.") }
+            let attrs=try staged.url.resourceValues(forKeys:[.fileSizeKey,.isRegularFileKey])
+            let bytes=Int64(attrs.fileSize ?? 0)
+            guard attrs.isRegularFile == true, bytes > 0, bytes <= 80*1024*1024 else {
+                throw ManagerError.message("Select a regular dylib smaller than 80 MB.")
+            }
+            let handle=try FileHandle(forReadingFrom:staged.url)
+            let header=handle.readData(ofLength:4)
+            handle.closeFile()
+            let magic=Array(header)
+            let validHeaders:[[UInt8]] = [
+                [0xCF,0xFA,0xED,0xFE], [0xFE,0xED,0xFA,0xCF],
+                [0xCA,0xFE,0xBA,0xBE], [0xBE,0xBA,0xFE,0xCA],
+                [0xCA,0xFE,0xBA,0xBF], [0xBF,0xBA,0xFE,0xCA],
+                [0xCE,0xFA,0xED,0xFE], [0xFE,0xED,0xFA,0xCE]
+            ]
+            guard validHeaders.contains(magic) else {
+                throw ManagerError.message("The selected file is not a Mach-O dylib.")
+            }
+            let pending=PendingSourceDylib(
+                localPath:staged.url.path, id:identifier, name:title, fileName:filename,
+                version:ver, description:desc, compatibility:compat,
+                sha256:try fileHash(staged.url), bytes:bytes,
+                tag:"rbx9-dylib-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8))",
+                releaseID:nil
+            )
+            try PendingSourceDylibStore.save(pending)
+            Task { await uploadSourceDylib(pending) }
+            return true
+        } catch {
+            alertMessage=error.localizedDescription
+            return false
+        }
+    }
+
+    private func resumePendingDylibIfNeeded() async {
+        guard !busy, let pending=PendingSourceDylibStore.load() else { return }
+        guard FileManager.default.fileExists(atPath:pending.localPath) else {
+            status="Saved dylib file is missing. Choose it again in Files."
+            return
+        }
+        await uploadSourceDylib(pending)
+    }
+
+    private func uploadSourceDylib(_ item:PendingSourceDylib) async {
+        guard !busy else { return }
+        busy=true
+        var succeeded=false
+        defer {
+            busy=false
+            finishTransfer()
+            if succeeded {
+                PendingSourceDylibStore.clear()
+                try? FileManager.default.removeItem(atPath:item.localPath)
+            }
+        }
+        do {
+            var pending=item
+            let fileURL=URL(fileURLWithPath:pending.localPath)
+            guard try fileHash(fileURL).caseInsensitiveCompare(pending.sha256) == .orderedSame else {
+                throw ManagerError.message("The locally staged dylib changed before publication.")
+            }
+            if pending.releaseID == nil {
+                let releaseData:Data
+                if let found=try? await apiWhenConnected("GET",
+                    "/repos/\(repository)/releases/tags/\(pending.tag)") {
+                    releaseData=found
+                } else {
+                    releaseData=try await apiWhenConnected("POST",
+                        "/repos/\(repository)/releases",
+                        body:try json([
+                            "tag_name":pending.tag,
+                            "name":"Dylib · \(pending.name) \(pending.version)",
+                            "body":"Dylib source asset published via RBx9 Source Manager.",
+                            "draft":true, "prerelease":false
+                        ]))
+                }
+                guard let id=try parse(releaseData)["id"] as? Int else {
+                    throw ManagerError.message("Could not create dylib release.")
+                }
+                pending.releaseID=id
+                try PendingSourceDylibStore.save(pending)
+            }
+            guard let releaseID=pending.releaseID else {
+                throw ManagerError.message("The dylib release has no ID.")
+            }
+            let asset=try await uploadReleaseAsset(fileURL,name:pending.fileName,
+                                                   releaseID:releaseID)
+            guard let download=asset["browser_download_url"] as? String,
+                  let remote=URL(string:download),
+                  remote.scheme=="https",remote.host=="github.com",
+                  remote.path.hasPrefix("/\(repository)/releases/download/") else {
+                throw ManagerError.message("GitHub returned an unexpected dylib URL.")
+            }
+            // Publish the asset first; only then advertise its URL in the feed.
+            _=try await apiWhenConnected("PATCH",
+                "/repos/\(repository)/releases/\(releaseID)",
+                body:try json(["draft":false]))
+            let (indexData,_)=try await file("ipa-source/dylibs.json")
+            var catalog=try parse(indexData)
+            guard catalog["schemaVersion"] as? Int == 1,
+                  var libraries=catalog["libraries"] as? [[String:Any]] else {
+                throw ManagerError.message("The online dylib source format is unsupported.")
+            }
+            if let matched=libraries.first(where:{$0["sha256"] as? String == pending.sha256 &&
+                                                  $0["id"] as? String != pending.id}) {
+                throw ManagerError.message("This exact dylib is already published as \(matched["name"] as? String ?? "another entry").")
+            }
+            let entry:[String:Any]=[
+                "id":pending.id,
+                "name":pending.name,
+                "fileName":pending.fileName,
+                "version":pending.version,
+                "description":pending.description,
+                "compatibility":pending.compatibility,
+                "size":pending.bytes,
+                "sha256":pending.sha256,
+                "downloadURL":download
+            ]
+            libraries.removeAll(where:{$0["id"] as? String == pending.id})
+            libraries.append(entry)
+            guard libraries.count <= 500 else { throw ManagerError.message("Dylib source is full.") }
+            libraries.sort {
+                ($0["name"] as? String ?? "").localizedStandardCompare(
+                    $1["name"] as? String ?? "") == .orderedAscending
+            }
+            catalog["libraries"]=libraries
+            catalog["updatedAt"]=ISO8601DateFormatter().string(from:Date())
+            try await put("ipa-source/dylibs.json",data:try json(catalog))
+            succeeded=true
+            await refresh()
+            status="Published \(pending.name) to the RBx9 Dylib Source."
+            alertMessage="Dylib uploaded and indexed. Refresh the Dylibs tab in RBx9 Signer after GitHub Pages deploys."
+        } catch {
+            status="Dylib publication paused: " + error.localizedDescription
+            alertMessage="The selected dylib remains staged for retry. " + error.localizedDescription
+        }
+    }
+
+    func removeSourceDylib(id:String) async {
+        guard !busy else { return }
+        await work("Removing dylib from online source") {
+            let (data,_)=try await self.file("ipa-source/dylibs.json")
+            var catalog=try self.parse(data)
+            guard catalog["schemaVersion"] as? Int == 1,
+                  var libraries=catalog["libraries"] as? [[String:Any]] else {
+                throw ManagerError.message("The online dylib source format is unsupported.")
+            }
+            libraries.removeAll(where:{$0["id"] as? String == id})
+            catalog["libraries"]=libraries
+            catalog["updatedAt"]=ISO8601DateFormatter().string(from:Date())
+            try await self.put("ipa-source/dylibs.json",data:try self.json(catalog))
+        }
+        await refresh()
+    }
+
 }
 
 struct Theme {
@@ -803,6 +1042,7 @@ struct PrimaryButton:View {
             TabView {
                 AppsScreen().tabItem { Label("ESign",systemImage:"square.stack.3d.up") }
                 DebsScreen().tabItem { Label("Sileo",systemImage:"shippingbox") }
+                OnlineDylibsScreen().tabItem { Label("Dylibs",systemImage:"puzzlepiece.extension") }
                 SettingsScreen().tabItem { Label("Settings",systemImage:"gearshape") }
             }
             .tint(Theme.cyan)
@@ -1514,6 +1754,164 @@ struct DebsScreen: View {
         }
     }
 }
+
+// MARK: - Dylibs published to RBx9 Signer's separate source catalog
+struct OnlineDylibsScreen: View {
+    @EnvironmentObject var manager:GitHubManager
+    @State private var importer=false
+    @State private var selected:StagedSourceFile?
+    @State private var name=""
+    @State private var version="1.0"
+    @State private var summary=""
+    @State private var compatibility=""
+    @State private var remove:SourceDylib?
+
+    var body:some View {
+        NavigationStack {
+            List {
+                Section {
+                    Header(title:"Dylib Library",
+                           subtitle:"Publish and sync tweaks for RBx9 Signer")
+                    HStack {
+                        Label("\(manager.dylibs.count) published dylibs",
+                              systemImage:"icloud.fill")
+                        Spacer()
+                    }.font(.caption)
+                    PrimaryButton(title:"Import Dylib from Files",
+                                  symbol:"plus.circle.fill") {
+                        importer=true
+                    }
+                    .disabled(manager.busy || !manager.connected)
+                    if let selected {
+                        VStack(alignment:.leading,spacing:12) {
+                            Text(selected.name).font(.headline).lineLimit(2)
+                            TextField("Display name",text:$name)
+                                .textFieldStyle(.roundedBorder)
+                            TextField("Version (e.g. 1.0)",text:$version)
+                                .textFieldStyle(.roundedBorder)
+                                .textInputAutocapitalization(.never)
+                            TextField("Description",text:$summary,axis:.vertical)
+                                .lineLimit(2...5)
+                                .textFieldStyle(.roundedBorder)
+                            TextField("Compatible apps / iOS (optional)",
+                                      text:$compatibility)
+                                .textFieldStyle(.roundedBorder)
+                            Text("Updates to an existing display name replace its source entry, but existing downloads stay in local Dylib Storage.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            PrimaryButton(title:"Publish to Dylib Source",
+                                          symbol:"icloud.and.arrow.up.fill") {
+                                if manager.publishSelectedDylib(selected,displayName:name,
+                                    version:version,description:summary,
+                                    compatibility:compatibility) {
+                                    self.selected=nil
+                                }
+                            }
+                            .disabled(manager.busy || !manager.connected)
+                            Button("Cancel Selection",role:.cancel) {
+                                if let selected=self.selected {
+                                    manager.discardStagedFiles([selected])
+                                }
+                                self.selected=nil
+                            }.font(.caption)
+                        }.padding(.vertical,6)
+                    }
+                }
+                .listRowBackground(Color.white.opacity(0.055))
+                Section("Source Dylibs") {
+                    if manager.dylibs.isEmpty {
+                        Text("No published dylibs. Import one from Files to make it available in RBx9 Signer.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                    ForEach(manager.dylibs) { item in
+                        VStack(alignment:.leading,spacing:5) {
+                            HStack {
+                                Text(item.name).font(.headline)
+                                Spacer()
+                                Text("v" + item.version)
+                                    .font(.caption).foregroundStyle(Theme.cyan)
+                            }
+                            Text(item.description)
+                                .font(.footnote).foregroundStyle(.secondary)
+                            HStack {
+                                Text(item.fileName).font(.caption2).lineLimit(1)
+                                Spacer()
+                                Text(ByteCountFormatter.string(
+                                    fromByteCount:item.size,countStyle:.file))
+                                    .font(.caption2)
+                            }.foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical,6)
+                        .contextMenu {
+                            if let url=URL(string:item.downloadURL) {
+                                Link(destination:url) {
+                                    Label("Download",systemImage:"arrow.down")
+                                }
+                            }
+                            Button(role:.destructive) { remove=item } label: {
+                                Label("Remove from Source",systemImage:"trash")
+                            }
+                        }
+                        .swipeActions(edge:.trailing,allowsFullSwipe:false) {
+                            Button(role:.destructive) { remove=item } label: {
+                                Label("Remove",systemImage:"trash")
+                            }
+                            .disabled(manager.busy)
+                        }
+                    }
+                }
+                Section {
+                    Text("Upload a .dylib to your GitHub source. RBx9 Signer shows it in its Dylibs tab and verifies SHA-256 before downloading to local Dylib Storage. Sign and install the selected IPA inside Signer.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Dylibs")
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .toolbar {
+                ToolbarItem(placement:.topBarTrailing) {
+                    Button { Task { await manager.refresh() } } label: {
+                        Image(systemName:"arrow.clockwise")
+                    }.disabled(manager.busy)
+                }
+            }
+            .sheet(isPresented:$importer) {
+                PackageDocumentPicker(kind:.dylib,multiple:false,onPick:{ urls in
+                    if let url=urls.first {
+                        if let previous=selected { manager.discardStagedFiles([previous]) }
+                        selected=manager.stageSelectedFile(url,expected:"dylib")
+                        name=selected.map{($0.name as NSString).deletingPathExtension} ?? ""
+                        version="1.0"
+                        summary=""
+                        compatibility=""
+                    }
+                    importer=false
+                },onCancel:{ importer=false })
+            }
+            .confirmationDialog("Remove \(remove?.name ?? "dylib") from the source?",
+                isPresented:Binding(get:{ remove != nil },
+                                    set:{ if !$0 { remove=nil } }),
+                titleVisibility:.visible) {
+                    Button("Remove from Source",role:.destructive) {
+                        if let item=remove {
+                            Task { await manager.removeSourceDylib(id:item.id) }
+                        }
+                        remove=nil
+                    }
+                    Button("Cancel",role:.cancel) { remove=nil }
+                } message: {
+                    Text("Removes only the source listing. Previously downloaded dylibs and old GitHub Release assets remain intact.")
+                }
+            .alert("Source Manager",isPresented:Binding(
+                get:{manager.alertMessage != nil},
+                set:{if !$0 {manager.alertMessage=nil}}
+            )) {
+                Button("OK",role:.cancel) { manager.alertMessage=nil }
+            } message: { Text(manager.alertMessage ?? "") }
+            .safeAreaInset(edge:.bottom) { StatusPanel() }
+        }
+    }
+}
+
 struct SettingsScreen:View {
     @EnvironmentObject var manager:GitHubManager
     @AppStorage("githubClientID") private var clientID = ""
