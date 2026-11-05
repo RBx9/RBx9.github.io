@@ -24,10 +24,11 @@ OLD_READY = """                            if case .ready = viewModel.status {
                                 rbx9OpenNativeInstaller()
                             }"""
 NEW_READY = """                            if case .ready = viewModel.status {
-                                // Semi Local: use upstream Feather's proven path, the
-                                // Safari page that redirects to itms-services. Direct
-                                // opening from the app is kept as the Retry action.
-                                if _serverMethod == 1 {
+                                // Semi Local only opens the Safari page when the user has
+                                // NOT chosen to skip it (Settings > skip Safari install
+                                // page). Otherwise hand off directly; the recovery card
+                                // still offers the Web Installer if iOS ignores that.
+                                if _serverMethod == 1 && !_skipSafariInstallPage {
                                     _isWebviewPresenting = true
                                 } else {
                                     rbx9OpenNativeInstaller()
