@@ -2,7 +2,7 @@ name: RBx9 Signer iOS 16+ Build
 
 on:
   push:
-    branches: [fix/rbx9-signer-storage-downloaded-private-1-3-17]
+    branches: [fix/rbx9-signer-delete-layout-isolated-nov05]
     paths:
       - 'rbx9-signer/**'
       - '.github/workflows/build-rbx9-signer.yml'
