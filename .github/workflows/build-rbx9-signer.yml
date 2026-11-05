@@ -1,9 +1,8 @@
-name: RBx9 Signer Source Export (private, no publish)
+name: RBx9 Signer iOS 16+ Build
 
 on:
   push:
     branches: [fix/rbx9-full-source-bundle-no-publish]
-    paths: ['.github/workflows/build-rbx9-signer.yml']
   workflow_dispatch:
 
 permissions:
