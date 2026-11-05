@@ -81,8 +81,8 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_15.py
           python3 rbx9-signer/upgrade_v1_3_16.py
           python3 rbx9-signer/upgrade_v1_3_17.py
-          grep -F 'RBx9DeleteTweakSheet'
-          grep -F 'confirmedDeletionAfterDismiss' feather/Feather/Views/Signing/SigningTweaksView.swift feather/Feather/Views/Signing/SigningTweaksView.swift
+          grep -F 'RBx9DeleteTweakSheet' feather/Feather/Views/Signing/SigningTweaksView.swift
+          grep -F 'confirmedDeletionAfterDismiss' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'Text("Downloaded")' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F '.searchable(text: $searchText' feather/Feather/Views/Signing/SigningTweaksView.swift
           ! grep -Fq '"Delete stored file?"' feather/Feather/Views/Signing/SigningTweaksView.swift
