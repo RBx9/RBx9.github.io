@@ -88,7 +88,7 @@ once(
 )
 
 once(
-    r'''\tprivate func _install() {''',
+    '''private func _install() {''',
     r'''    // iOS may not present a nested Safari sheet at the end of signing.
     // Direct itms-services handoff tries the native OS installer; the user
     // can explicitly retry or open the legacy web method if iOS rejects it.
@@ -108,7 +108,7 @@ once(
         }
     }
 
-\tprivate func _install() {''',
+private func _install() {''',
     "add installer handoff helper"
 )
 
