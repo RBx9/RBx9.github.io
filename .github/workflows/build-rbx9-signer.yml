@@ -3,7 +3,7 @@ name: Export RBx9 complete source for Claude (no publishing)
 on:
   push:
     branches: [exports/rbx9-complete-source-handoff-2026-11-05]
-    paths: ['.github/workflows/export-rbx9-source.yml']
+    paths: ['.github/workflows/build-rbx9-signer.yml']
   workflow_dispatch:
 
 permissions:
