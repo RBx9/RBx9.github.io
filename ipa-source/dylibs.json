@@ -6,7 +6,7 @@
       "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-dylib-1793895654-E66AC0F2\/RBx9-v16.dylib",
       "fileName" : "RBx9-v16.dylib",
       "id" : "rbx9",
-      "name" : "RBx9",
+      "name" : "RBx9 For Lines",
       "sha256" : "fc5435f5a4cad650e4f6f627f5f36ac699b02adb0acc678223f610cd02f1f178",
       "size" : 789507,
       "version" : "1.6"
@@ -35,5 +35,5 @@
     }
   ],
   "schemaVersion" : 1,
-  "updatedAt" : "2026-11-05T17:51:20Z"
+  "updatedAt" : "2026-11-05T18:38:37Z"
 }
