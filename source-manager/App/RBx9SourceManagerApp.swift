@@ -72,17 +72,17 @@ struct SourceDeb: Identifiable {
 struct SourceDylib: Identifiable, Codable {
     let id: String
     let name: String
-    let filename: String
+    let fileName: String
+    let version: String
+    let description: String
     let downloadURL: String
     let sha256: String
     let size: Int64
-    let targetBundleID: String?
-    let createdAt: String
+    let compatibility: String?
 }
 struct DylibCatalog: Codable {
     let schemaVersion: Int
-    let updatedAt: String
-    let dylibs: [SourceDylib]
+    let libraries: [SourceDylib]
 }
 
 @MainActor
@@ -248,7 +248,7 @@ final class GitHubManager: ObservableObject {
             if let (data,_) = try? await file("ipa-source/dylibs.json"),
                let manifest = try? JSONDecoder().decode(DylibCatalog.self, from:data),
                manifest.schemaVersion == 1 {
-                dylibs = manifest.dylibs.sorted {
+                dylibs = manifest.libraries.sorted {
                     $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
                 }
             } else {
@@ -330,21 +330,20 @@ final class GitHubManager: ObservableObject {
             }
             return parsed
         }
-        return DylibCatalog(schemaVersion:1,updatedAt:"",dylibs:[])
+        return DylibCatalog(schemaVersion:1,libraries:[])
     }
     private func saveDylibCatalog(_ entries:[SourceDylib]) async throws {
-        let iso = ISO8601DateFormatter().string(from:Date())
-        let catalog = DylibCatalog(schemaVersion:1,updatedAt:iso,dylibs:entries)
+        let catalog = DylibCatalog(schemaVersion:1,libraries:entries)
         let data = try JSONEncoder().encode(catalog)
         try await put("ipa-source/dylibs.json",data:data)
     }
 
     // Publish only .dylib binaries. Sileo DEBs and the IPA library are untouched.
-    func publishDylib(_ staged:StagedSourceFile,targetBundleID:String) {
+    func publishDylib(_ staged:StagedSourceFile,targetBundleID:String,version:String,notes:String) {
         guard !busy else { alertMessage="An upload is already running."; return }
-        Task { await uploadDylib(staged, targetBundleID:targetBundleID) }
+        Task { await uploadDylib(staged, targetBundleID:targetBundleID,version:version,notes:notes) }
     }
-    private func uploadDylib(_ staged:StagedSourceFile,targetBundleID:String) async {
+    private func uploadDylib(_ staged:StagedSourceFile,targetBundleID:String,version:String,notes:String) async {
         busy = true
         defer {
             busy = false
@@ -359,6 +358,12 @@ final class GitHubManager: ObservableObject {
                 throw ManagerError.message("Choose a .dylib with a valid filename.")
             }
             let target = targetBundleID.trimmingCharacters(in:.whitespacesAndNewlines)
+            let version = version.trimmingCharacters(in:.whitespacesAndNewlines)
+            let notes = notes.trimmingCharacters(in:.whitespacesAndNewlines)
+            guard !version.isEmpty && version.count <= 50 &&
+                  notes.count <= 2000 else {
+                throw ManagerError.message("Version or description is invalid.")
+            }
             if !target.isEmpty && target.range(
                 of:"^[A-Za-z0-9.-]{3,180}$",options:.regularExpression
             ) == nil {
@@ -366,13 +371,13 @@ final class GitHubManager: ObservableObject {
             }
             let digest = try fileHash(staged.url)
             let existing = try await readDylibCatalog()
-            guard !existing.dylibs.contains(where: {
+            guard !existing.libraries.contains(where: {
                 $0.sha256.caseInsensitiveCompare(digest) == .orderedSame
             }) else {
                 throw ManagerError.message("This dylib is already published (identical SHA-256).")
             }
-            guard !existing.dylibs.contains(where: {
-                $0.filename.caseInsensitiveCompare(filename) == .orderedSame
+            guard !existing.libraries.contains(where: {
+                $0.fileName.caseInsensitiveCompare(filename) == .orderedSame
             }) else {
                 throw ManagerError.message("A dylib with that filename already exists. Rename it first.")
             }
@@ -401,19 +406,22 @@ final class GitHubManager: ObservableObject {
             // Re-read the manifest immediately before the write to preserve
             // additions from other app sessions.
             var latest = try await readDylibCatalog()
-            guard !latest.dylibs.contains(where: {
-                $0.sha256 == digest || $0.filename.lowercased() == filename.lowercased()
+            guard !latest.libraries.contains(where: {
+                $0.sha256 == digest || $0.fileName.lowercased() == filename.lowercased()
             }) else {
                 throw ManagerError.message("The dylib catalog changed; a duplicate exists.")
             }
-            latest = DylibCatalog(schemaVersion:1,updatedAt:latest.updatedAt,
-                dylibs:latest.dylibs + [SourceDylib(
-                    id:UUID().uuidString,name:String(filename.dropLast(6)),filename:filename,
+            latest = DylibCatalog(schemaVersion:1,
+                libraries:latest.libraries + [SourceDylib(
+                    id:UUID().uuidString.lowercased(),
+                    name:String(filename.dropLast(6)),
+                    fileName:filename,
+                    version:version,
+                    description:notes,
                     downloadURL:publishedURL,sha256:digest,size:size,
-                    targetBundleID:target.isEmpty ? nil : target,
-                    createdAt:ISO8601DateFormatter().string(from:Date())
+                    compatibility:target.isEmpty ? nil : target
                 )])
-            try await saveDylibCatalog(latest.dylibs)
+            try await saveDylibCatalog(latest.libraries)
             await refresh()
             status = "Dylib added to RBx9 Source. Signer can sync after Pages deploys."
         } catch {
@@ -424,10 +432,10 @@ final class GitHubManager: ObservableObject {
     func removeDylib(id:String) async {
         await work("Removing dylib from source") {
             let manifest = try await self.readDylibCatalog()
-            guard manifest.dylibs.contains(where: { $0.id == id }) else {
+            guard manifest.libraries.contains(where: { $0.id == id }) else {
                 throw ManagerError.message("Dylib no longer exists.")
             }
-            try await self.saveDylibCatalog(manifest.dylibs.filter { $0.id != id })
+            try await self.saveDylibCatalog(manifest.libraries.filter { $0.id != id })
         }
     }
 
@@ -1267,6 +1275,8 @@ struct DylibsScreen: View {
     @EnvironmentObject private var manager: GitHubManager
     @State private var showingImporter = false
     @State private var targetBundleID = ""
+    @State private var version = "1.0"
+    @State private var notes = ""
     @State private var pendingRemoval: SourceDylib?
 
     var body: some View {
@@ -1276,6 +1286,11 @@ struct DylibsScreen: View {
                     Header(title:"Dylib Library",subtitle:"Manage remote tweaks for RBx9 Signer")
                     Text("Standalone dylibs are published separately from Sileo DEBs and IPAs.")
                         .font(.footnote).foregroundStyle(.secondary)
+                    TextField("Version",text:$version)
+                        .textInputAutocapitalization(.never)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("Description (optional)",text:$notes,axis:.vertical)
+                        .textFieldStyle(.roundedBorder)
                     TextField("Target app bundle ID (optional)",text:$targetBundleID)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -1296,9 +1311,11 @@ struct DylibsScreen: View {
                                 .foregroundStyle(Theme.cyan)
                             VStack(alignment:.leading,spacing:5) {
                                 Text(item.name).font(.headline)
-                                Text(item.filename).font(.caption)
+                                Text(item.fileName).font(.caption)
+                                Text("v"+item.version+" · "+item.description).font(.caption2)
                                     .foregroundStyle(.secondary)
-                                if let target=item.targetBundleID,!target.isEmpty {
+                                    .foregroundStyle(.secondary)
+                                if let target=item.compatibility,!target.isEmpty {
                                     Text("For: "+target).font(.caption2)
                                         .foregroundStyle(.secondary)
                                 }
@@ -1335,7 +1352,7 @@ struct DylibsScreen: View {
                 PackageDocumentPicker(multiple:false,onPick:{ urls in
                     if let first=urls.first,
                        let staged=manager.stageSelectedFile(first,expected:"dylib") {
-                        manager.publishDylib(staged,targetBundleID:targetBundleID)
+                        manager.publishDylib(staged,targetBundleID:targetBundleID,version:version,notes:notes)
                     }
                     showingImporter=false
                 },onCancel:{ showingImporter=false })
