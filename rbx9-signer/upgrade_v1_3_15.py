@@ -79,7 +79,7 @@ final class RBx9DylibSourceModel: ObservableObject {
               item.fileName.count <= 180,
               item.fileName == URL(fileURLWithPath: item.fileName).lastPathComponent,
               !item.fileName.contains(".."),
-              item.fileName.pathExtension.lowercased() == "dylib",
+              URL(fileURLWithPath: item.fileName).pathExtension.lowercased() == "dylib",
               item.sha256.range(of: "^[0-9a-fA-F]{64}$", options: .regularExpression) != nil,
               item.size > 0, item.size <= 80 * 1024 * 1024,
               let url = URL(string: item.downloadURL),
