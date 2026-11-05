@@ -24,18 +24,17 @@ once(
     "add retry state"
 )
 
-# The old Semi Local path only presents a Safari sheet. When the iOS
-# presentation gets suppressed (e.g. nested sheet during signing), the
-# status stays Ready forever with no actionable control.
-once(
-    r'''\t\t\t\tif case .ready = newStatus {
-\t\t\t\t\tif _serverMethod == 0 {
-\t\t\t\t\t\tUIApplication.shared.open(URL(string: installer.iTunesLink)!)
-\t\t\t\t\t} else if _serverMethod == 1 {
-\t\t\t\t\t\t_isWebviewPresenting = true
-\t\t\t\t\t}
-\t\t\t\t}''',
-    r'''\t\t\t\tif case .ready = newStatus {
+# The old Semi Local path only presents a Safari sheet. On iOS 27 this
+# presentation can fail silently when nested inside signing/navigation sheets.
+# Replace just the ready branch using token boundaries to tolerate formatting.
+ready_token = "if case .ready = newStatus {"
+next_token = "if case .sendingPayload = newStatus"
+if src.count(ready_token)!=1 or src.count(next_token)!=1:
+    raise RuntimeError("RBx9 v1.3.18: unexpected install status handler structure")
+begin=src.index(ready_token)
+end=src.index(next_token,begin)
+assert 0 < end-begin < 1600
+src = src[:begin] + """if case .ready = newStatus {
                     if !rbx9DidAttemptHandoff {
                         rbx9DidAttemptHandoff = true
                         // Give the signing sheet time to finish its transition.
@@ -45,9 +44,9 @@ once(
                             }
                         }
                     }
-\t\t\t\t}''',
-    "replace unreliable automatic Ready handoff"
-)
+                }
+
+                """ + src[end:]
 
 once(
     r'''\t\t\tif viewModel.isCompleted {
