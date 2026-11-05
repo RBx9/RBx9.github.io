@@ -84,6 +84,7 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_18.py
           python3 rbx9-signer/upgrade_v1_3_19.py
           python3 rbx9-signer/upgrade_v1_3_19_installer_diagnostics.py
+          python3 rbx9-signer/upgrade_v1_3_19_delete_hardening.py
           grep -F 'Label("Retry Install"' feather/Feather/Views/Library/Install/InstallPreviewView.swift
           grep -F 'Task.sleep(nanoseconds: 9_000_000_000)' feather/Feather/Views/Library/Install/InstallPreviewView.swift
           grep -F 'recoveryExpanded: $rbx9RecoveryExpanded' feather/Feather/Views/Library/LibraryView.swift
@@ -93,6 +94,7 @@ jobs:
           grep -F 'self._server = try setupApp' feather/Feather/Backend/Server/ServerInstaller.swift
           grep -F 'RBx9DeleteTweakSheet' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'confirmedDeletionAfterDismiss' feather/Feather/Views/Signing/SigningTweaksView.swift
+          grep -F 'allowsFullSwipe: false' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'Text("Downloaded")' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F '.searchable(text: $searchText' feather/Feather/Views/Signing/SigningTweaksView.swift
           ! grep -Fq '"Delete stored file?"' feather/Feather/Views/Signing/SigningTweaksView.swift
