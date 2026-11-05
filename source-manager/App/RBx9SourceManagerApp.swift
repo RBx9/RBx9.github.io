@@ -1363,6 +1363,7 @@ struct AppsScreen: View {
     @State private var renameDylib: SavedDylib?
     @State private var renameDylibText = ""
     @State private var deleteDylib: SavedDylib?
+    @State private var confirmedLocalDylibDelete: SavedDylib?
     @State private var pendingDelete: SourceApp?
 
     @ViewBuilder private var uploadSection: some View {
@@ -1552,17 +1553,24 @@ struct AppsScreen: View {
                 }
                 Button("Cancel",role:.cancel) { renameDylib=nil }
             }
-            .confirmationDialog("Delete saved dylib?",isPresented:Binding(
-                get:{deleteDylib != nil},set:{if !$0 {deleteDylib=nil}}
-            ),titleVisibility:.visible) {
-                Button("Delete saved copy",role:.destructive) {
-                    if let item = deleteDylib {
-                        do { try vault.remove(item) }
-                        catch { manager.alertMessage = error.localizedDescription }
-                    }
-                    deleteDylib = nil
+            .sheet(item:$deleteDylib, onDismiss: {
+                // Do not mutate the ForEach / storage while its sheet is still presenting.
+                guard let item = confirmedLocalDylibDelete else { return }
+                confirmedLocalDylibDelete = nil
+                do { try vault.remove(item) }
+                catch {
+                    vault.refresh()
+                    manager.alertMessage = "Could not remove " + item.name + ": " + error.localizedDescription
                 }
-                Button("Cancel",role:.cancel) { deleteDylib=nil }
+            }) { item in
+                RBx9SavedDylibDeleteSheet(file:item,
+                    onDelete:{
+                        confirmedLocalDylibDelete = item
+                        deleteDylib = nil
+                    },
+                    onCancel:{ deleteDylib = nil })
+                    .presentationDetents([.height(315)])
+                    .presentationDragIndicator(.visible)
             }
             .confirmationDialog("Remove \(pendingDelete?.name ?? "app")?",
                 isPresented:Binding(get:{pendingDelete != nil},set:{if !$0 {pendingDelete=nil}}),
@@ -2009,5 +2017,59 @@ struct SettingsScreen:View {
                 Button("OK",role:.cancel) { manager.alertMessage=nil }
             } message: { Text(manager.alertMessage ?? "") }
         }
+    }
+}
+
+
+// MARK: - RBx9 Source Manager storage delete confirmation
+// Finishes dismissing before the storage list is refreshed by its parent.
+private struct RBx9SavedDylibDeleteSheet: View {
+    let file: SavedDylib
+    let onDelete: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 13) {
+            Image(systemName: "trash.circle.fill")
+                .font(.system(size: 40))
+                .foregroundStyle(.red)
+                .padding(.top, 8)
+            Text("Remove from Dylib Storage?")
+                .font(.headline)
+                .multilineTextAlignment(.center)
+            Text(file.name)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.cyan)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text("Only the saved copy will be deleted. Published source files and installed apps remain unchanged.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Button(role: .destructive, action: onDelete) {
+                Label("Delete saved copy", systemImage: "trash")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.red)
+            .background(Color.red.opacity(0.14), in: RoundedRectangle(cornerRadius: 14))
+            Button(action: onCancel) {
+                Text("Keep dylib")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.black)
+            .background(Theme.cyan, in: RoundedRectangle(cornerRadius: 14))
+        }
+        .padding(.horizontal, 23)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.background)
     }
 }
