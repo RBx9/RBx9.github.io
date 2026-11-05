@@ -1,0 +1,52 @@
+name: Test Source Manager Dylib Catalog (unpublished)
+
+on:
+  push:
+    branches: [feature/dylib-source-library-no-publish]
+    paths:
+      - 'source-manager/**'
+      - '.github/workflows/test-dylib-source-manager.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-rbx9-dylib-manager-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-preview:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate icon
+        run: swift source-manager/scripts/create_icon.swift
+      - name: Generate project
+        run: cd source-manager && xcodegen generate
+      - name: Build unsigned Source Manager preview
+        run: |
+          set -euo pipefail
+          xcodebuild -project source-manager/RBx9SourceManager.xcodeproj \
+            -scheme RBx9SourceManager -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/RBx9Preview" \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Package private preview IPA
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/RBx9Preview/Build/Products/Release-iphoneos/RBx9SourceManager.app"
+          test -f "$app/RBx9SourceManager"
+          mkdir -p "$RUNNER_TEMP/rbx9-preview/Payload"
+          cp -RL "$app" "$RUNNER_TEMP/rbx9-preview/Payload/"
+          (cd "$RUNNER_TEMP/rbx9-preview" && zip -qry "$GITHUB_WORKSPACE/RBx9SourceManager-DylibLibrary-preview-unsigned.ipa" Payload)
+          unzip -tq "$GITHUB_WORKSPACE/RBx9SourceManager-DylibLibrary-preview-unsigned.ipa"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RBx9-SourceManager-DylibLibrary-private-preview
+          path: RBx9SourceManager-DylibLibrary-preview-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7
