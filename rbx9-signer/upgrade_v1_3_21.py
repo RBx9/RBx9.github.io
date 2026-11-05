@@ -380,6 +380,43 @@ _helpers = """	/// NIOCore.ChannelError code 5 (ioOnClosedChannel): the other si
 _t = _t.replace(_old2, _helpers + _old2, 1)
 _srv.write_text(_t)
 
+# --- One-time automatic web-installer fallback (only when direct handoff stalls)
+_ip = root / "Views/Library/Install/InstallPreviewView.swift"
+_s = _ip.read_text()
+
+def _once(old, new, label):
+    global _s
+    assert _s.count(old) == 1, ("fallback " + label, _s.count(old))
+    _s = _s.replace(old, new, 1)
+
+_once('    @State private var rbx9ServerCheck = ""\n',
+      '    @State private var rbx9ServerCheck = ""\n'
+      '    @State private var rbx9DidWebFallback = false\n'
+      '    @State private var rbx9WebFallbackTask: Task<Void, Never>?\n', "state")
+
+_once('                    rbx9RecoveryTask?.cancel()\n                    rbx9RecoveryTask = Task { @MainActor in\n',
+      '                    // The user chose to skip the web page, so it only appears if\n'
+      '                    // iOS has not started the install shortly after the handoff.\n'
+      '                    rbx9WebFallbackTask?.cancel()\n'
+      '                    if _serverMethod == 1 && _skipSafariInstallPage && !rbx9DidWebFallback {\n'
+      '                        rbx9WebFallbackTask = Task { @MainActor in\n'
+      '                            try? await Task.sleep(nanoseconds: 5_000_000_000)\n'
+      '                            guard !Task.isCancelled, !rbx9DidWebFallback, !_isWebviewPresenting else { return }\n'
+      '                            if case .ready = viewModel.status {\n'
+      '                                rbx9DidWebFallback = true\n'
+      '                                _isWebviewPresenting = true\n'
+      '                            }\n'
+      '                        }\n'
+      '                    }\n'
+      '                    rbx9RecoveryTask?.cancel()\n                    rbx9RecoveryTask = Task { @MainActor in\n', "ready branch")
+
+_once('                    rbx9ServerCheck = ""\n                    rbx9InstallHint = ""\n',
+      '                    rbx9ServerCheck = ""\n                    rbx9InstallHint = ""\n'
+      '                    rbx9WebFallbackTask?.cancel()\n'
+      '                    rbx9WebFallbackTask = nil\n', "leave ready")
+
+_ip.write_text(_s)
+
 cfg = Path("feather/Feather.xcconfig")
 c = cfg.read_text()
 if c.count("FEATHER_PROJECT_VERSION=1.3.20") != 1:
