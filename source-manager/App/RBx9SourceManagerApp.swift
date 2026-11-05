@@ -936,18 +936,33 @@ final class GitHubManager: ObservableObject {
             guard let releaseID=pending.releaseID else {
                 throw ManagerError.message("The dylib release has no ID.")
             }
-            let asset=try await uploadReleaseAsset(fileURL,name:pending.fileName,
-                                                   releaseID:releaseID)
-            guard let download=asset["browser_download_url"] as? String,
-                  let remote=URL(string:download),
-                  remote.scheme=="https",remote.host=="github.com",
-                  remote.path.hasPrefix("/\(repository)/releases/download/") else {
-                throw ManagerError.message("GitHub returned an unexpected dylib URL.")
-            }
-            // Publish the asset first; only then advertise its URL in the feed.
-            _=try await apiWhenConnected("PATCH",
+            _ = try await uploadReleaseAsset(fileURL,name:pending.fileName,
+                                               releaseID:releaseID)
+            // A draft Release advertises /untagged-.../ URLs. Those expire
+            // when GitHub publishes it. Never cache the draft asset URL.
+            _ = try await apiWhenConnected("PATCH",
                 "/repos/\(repository)/releases/\(releaseID)",
                 body:try json(["draft":false]))
+            // Fetch the published Release again; its final asset URL is
+            // canonical and safe to advertise in the public dylib catalog.
+            let published = try parse(try await apiWhenConnected("GET",
+                "/repos/\(repository)/releases/\(releaseID)"))
+            guard published["draft"] as? Bool == false,
+                  published["tag_name"] as? String == pending.tag,
+                  let assets = published["assets"] as? [[String:Any]],
+                  let finalAsset = assets.first(where:{
+                      $0["name"] as? String == pending.fileName &&
+                      ($0["size"] as? Int) == Int(pending.bytes) &&
+                      ($0["state"] as? String) == "uploaded"
+                  }),
+                  let download = finalAsset["browser_download_url"] as? String,
+                  let remote = URL(string:download),
+                  remote.scheme == "https",
+                  remote.host == "github.com",
+                  remote.path.hasPrefix("/\(repository)/releases/download/\(pending.tag)/"),
+                  remote.lastPathComponent == pending.fileName else {
+                throw ManagerError.message("GitHub has not published the final dylib asset URL. The upload is saved; retry.")
+            }
             let (indexData,_)=try await file("ipa-source/dylibs.json")
             var catalog=try parse(indexData)
             guard catalog["schemaVersion"] as? Int == 1,
