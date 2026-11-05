@@ -1,0 +1,66 @@
+name: Validate RBx9 Dylib Library Source Manager (unpublished)
+
+on:
+  push:
+    branches: [rbx9-dylib-library-dev]
+    paths:
+      - 'source-manager/**'
+      - 'ipa-source/dylibs.json'
+      - '.github/workflows/validate-dylib-source-manager.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rbx9-dylib-source-manager-preview
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate dylib index format
+        run: |
+          python3 - <<'PY'
+          import json
+          with open("ipa-source/dylibs.json") as f:
+              d=json.load(f)
+          assert d["schemaVersion"]==1
+          assert isinstance(d["libraries"],list)
+          PY
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Prepare existing app icon
+        run: swift source-manager/scripts/create_icon.swift
+      - name: Generate Source Manager Xcode project
+        run: cd source-manager && xcodegen generate
+      - name: Compile Source Manager for iOS (unsigned)
+        run: |
+          set -euo pipefail
+          xcodebuild -project source-manager/RBx9SourceManager.xcodeproj \
+            -scheme RBx9SourceManager -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/RBx9DylibPreview" \
+            CODE_SIGNING_ALLOWED=NO build > "$RUNNER_TEMP/dylib-preview-build.log" 2>&1 || {
+              grep -E 'error:|fatal error:|BUILD FAILED' "$RUNNER_TEMP/dylib-preview-build.log" | tail -90 || true
+              exit 1
+            }
+      - name: Package unsigned preview (do not publish)
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/RBx9DylibPreview/Build/Products/Release-iphoneos/RBx9SourceManager.app"
+          test -f "$app/RBx9SourceManager"
+          mkdir -p "$RUNNER_TEMP/preview/Payload"
+          cp -R "$app" "$RUNNER_TEMP/preview/Payload/"
+          cd "$RUNNER_TEMP/preview"
+          zip -qry "$GITHUB_WORKSPACE/RBx9SourceManager-DylibPreview-unsigned.ipa" Payload
+          unzip -tq "$GITHUB_WORKSPACE/RBx9SourceManager-DylibPreview-unsigned.ipa"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RBx9SourceManager-DylibPreview-unsigned
+          path: RBx9SourceManager-DylibPreview-unsigned.ipa
+          retention-days: 7
+          if-no-files-found: error
