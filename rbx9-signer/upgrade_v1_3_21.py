@@ -338,6 +338,48 @@ patch("Views/Library/Install/InstallPreviewView.swift", [
 ])
 print("loading patched")
 
+# --- Closed-connection errors while iOS fetches the IPA are not fatal -------
+_srv = root / "Backend/Server/ServerInstaller.swift"
+_t = _srv.read_text()
+_old = """					case .failure(let error):
+						self._updateStatus(.broken(error))
+"""
+_new = """					case .failure(let error):
+						if Self._rbx9IsClientDisconnect(error) {
+							// iOS often closes and reopens the connection while it
+							// fetches a large IPA. Wait for a retry before failing.
+							self._rbx9StartDisconnectWatchdog(error)
+						} else {
+							self._updateStatus(.broken(error))
+						}
+"""
+assert _t.count(_old) == 1, "payload failure case"
+_t = _t.replace(_old, _new, 1)
+_old2 = "	private func _updateStatus(_ newStatus: InstallerStatusViewModel.InstallerStatus) {"
+assert _t.count(_old2) == 1, "update status"
+_helpers = """	/// NIOCore.ChannelError code 5 (ioOnClosedChannel): the other side closed the
+	/// connection mid-transfer. That is expected when iOS retries a request.
+	private static func _rbx9IsClientDisconnect(_ error: Error) -> Bool {
+		let nsError = error as NSError
+		if nsError.domain == "NIOCore.ChannelError" && nsError.code == 5 { return true }
+		return String(describing: error).contains("ioOnClosedChannel")
+	}
+
+	/// If iOS never comes back after a dropped connection, report the failure
+	/// instead of leaving the installer waiting forever.
+	private func _rbx9StartDisconnectWatchdog(_ error: Error) {
+		DispatchQueue.main.asyncAfter(deadline: .now() + 25) { [weak self] in
+			guard let self else { return }
+			if case .sendingPayload = self.viewModel.status {
+				self.viewModel.status = .broken(error)
+			}
+		}
+	}
+
+"""
+_t = _t.replace(_old2, _helpers + _old2, 1)
+_srv.write_text(_t)
+
 cfg = Path("feather/Feather.xcconfig")
 c = cfg.read_text()
 if c.count("FEATHER_PROJECT_VERSION=1.3.20") != 1:

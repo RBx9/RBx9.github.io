@@ -96,6 +96,7 @@ jobs:
           grep -F 'URLSessionConfiguration.background' feather/Feather/Backend/Observable/DownloadManager.swift
           grep -F 'handleEventsForBackgroundURLSession' feather/Feather/FeatherApp.swift
           grep -F '_rbx9SigningMode' feather/Feather/Views/Signing/SigningView.swift
+          grep -F '_rbx9IsClientDisconnect' feather/Feather/Backend/Server/ServerInstaller.swift
           grep -F 'self._server = try setupApp' feather/Feather/Backend/Server/ServerInstaller.swift
           grep -F 'RBx9DeleteTweakSheet' feather/Feather/Views/Signing/SigningTweaksView.swift
           grep -F 'confirmedDeletionAfterDismiss' feather/Feather/Views/Signing/SigningTweaksView.swift
