@@ -9,6 +9,8 @@ src=path.read_text()
 
 def once(old,new,reason):
     global src
+    old=old.replace(r"\t", "\t")
+    new=new.replace(r"\t", "\t")
     n=src.count(old)
     if n!=1:
         raise RuntimeError(f"RBx9 v1.3.18 {reason}: expected 1 match, got {n}")
