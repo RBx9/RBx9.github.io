@@ -1,4 +1,3 @@
 # GitHub release URL|Installer filename|SHA-256
 https://github.com/RBx9/DuoBar/releases/download/v2.7.2/DuoBar_2.7.2_RootHide.deb|DuoBar_2.7.2_RootHide.deb|5d1b2744d84c98b3d9b7062b90161d2640bdce3d5d3c934357c185a198aeb1ec
 https://github.com/RBx9/DuoBar/releases/download/v2.7.2/DuoBar_2.7.2_Rootless.deb|DuoBar_2.7.2_Rootless.deb|e16371645b7a83638ba1c378c3f13f2f843ebd3028dd24623e00182b2d87daf4
-local:source-debs/DuoBar_2.7.2_ios14_Taurine_beta1.deb|DuoBar_2.7.2_ios14_Taurine_beta1.deb|de9e37354ed56d8be34e5409ccfdddd7e3883dde9702eb7a07bfa633d2087fcf
