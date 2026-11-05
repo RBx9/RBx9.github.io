@@ -68,6 +68,23 @@ struct SourceDeb: Identifiable {
     var id: String { line }
 }
 
+// Standalone .dylib catalog for RBx9 Signer. Kept separate from Sileo DEBs.
+struct SourceDylib: Identifiable, Codable {
+    let id: String
+    let name: String
+    let filename: String
+    let downloadURL: String
+    let sha256: String
+    let size: Int64
+    let targetBundleID: String?
+    let createdAt: String
+}
+struct DylibCatalog: Codable {
+    let schemaVersion: Int
+    let updatedAt: String
+    let dylibs: [SourceDylib]
+}
+
 @MainActor
 final class GitHubManager: ObservableObject {
     @Published var username: String = ""
@@ -75,6 +92,7 @@ final class GitHubManager: ObservableObject {
     @Published var status = ""
     @Published var apps: [SourceApp] = []
     @Published var debs: [SourceDeb] = []
+    @Published var dylibs: [SourceDylib] = []
     @Published var catalog: [String:Any] = [:]
     @Published var ipaName = "RBx9 IPA Library"
     @Published var ipaDescription = "Browse IPAs from RBx9."
@@ -160,6 +178,7 @@ final class GitHubManager: ObservableObject {
         username = ""
         apps = []
         debs = []
+        dylibs = []
         status = "Disconnected"
     }
     func beginDeviceLogin(clientID:String) async throws -> DeviceCode {
@@ -225,6 +244,15 @@ final class GitHubManager: ObservableObject {
                 let cells = line.split(separator:"|",omittingEmptySubsequences:false)
                 guard cells.count == 3 else { return nil }
                 return SourceDeb(line:line,filename:String(cells[1]))
+            }
+            if let (data,_) = try? await file("ipa-source/dylibs.json"),
+               let manifest = try? JSONDecoder().decode(DylibCatalog.self, from:data),
+               manifest.schemaVersion == 1 {
+                dylibs = manifest.dylibs.sorted {
+                    $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+                }
+            } else {
+                dylibs = []
             }
             if let (data,_) = try? await file("ipa-source/source-settings.json"),
                let obj = try? parse(data) {
@@ -294,6 +322,115 @@ final class GitHubManager: ObservableObject {
             try await self.put("package-sources.txt",data:Data((kept.joined(separator:"\n").trimmingCharacters(in:.newlines)+"\n").utf8))
         }
     }
+    private func readDylibCatalog() async throws -> DylibCatalog {
+        if let (data, _) = try? await file("ipa-source/dylibs.json") {
+            let parsed = try JSONDecoder().decode(DylibCatalog.self, from:data)
+            guard parsed.schemaVersion == 1 else {
+                throw ManagerError.message("Unsupported dylib catalog format")
+            }
+            return parsed
+        }
+        return DylibCatalog(schemaVersion:1,updatedAt:"",dylibs:[])
+    }
+    private func saveDylibCatalog(_ entries:[SourceDylib]) async throws {
+        let iso = ISO8601DateFormatter().string(from:Date())
+        let catalog = DylibCatalog(schemaVersion:1,updatedAt:iso,dylibs:entries)
+        let data = try JSONEncoder().encode(catalog)
+        try await put("ipa-source/dylibs.json",data:data)
+    }
+
+    // Publish only .dylib binaries. Sileo DEBs and the IPA library are untouched.
+    func publishDylib(_ staged:StagedSourceFile,targetBundleID:String) {
+        guard !busy else { alertMessage="An upload is already running."; return }
+        Task { await uploadDylib(staged, targetBundleID:targetBundleID) }
+    }
+    private func uploadDylib(_ staged:StagedSourceFile,targetBundleID:String) async {
+        busy = true
+        defer {
+            busy = false
+            discardStagedFiles([staged])
+        }
+        do {
+            let filename = staged.name.replacingOccurrences(
+                of:"[^a-zA-Z0-9._-]",with:"-",options:.regularExpression
+            )
+            guard filename.lowercased().hasSuffix(".dylib"),
+                  !filename.hasPrefix("."), filename.count <= 180 else {
+                throw ManagerError.message("Choose a .dylib with a valid filename.")
+            }
+            let target = targetBundleID.trimmingCharacters(in:.whitespacesAndNewlines)
+            if !target.isEmpty && target.range(
+                of:"^[A-Za-z0-9.-]{3,180}$",options:.regularExpression
+            ) == nil {
+                throw ManagerError.message("Invalid target bundle identifier.")
+            }
+            let digest = try fileHash(staged.url)
+            let existing = try await readDylibCatalog()
+            guard !existing.dylibs.contains(where: {
+                $0.sha256.caseInsensitiveCompare(digest) == .orderedSame
+            }) else {
+                throw ManagerError.message("This dylib is already published (identical SHA-256).")
+            }
+            guard !existing.dylibs.contains(where: {
+                $0.filename.caseInsensitiveCompare(filename) == .orderedSame
+            }) else {
+                throw ManagerError.message("A dylib with that filename already exists. Rename it first.")
+            }
+            let tag = "rbx9-dylib-\(UUID().uuidString.lowercased())"
+            status = "Creating private draft release…"
+            let draft = try parse(try await api("POST","/repos/\(repository)/releases",
+                body:try json(["tag_name":tag,"name":"RBx9 Dylib · \(filename)",
+                               "body":"RBx9 Signer Dylib Library file. Review binary before injection.",
+                               "draft":true,"prerelease":false])))
+            guard let releaseID = draft["id"] as? Int else {
+                throw ManagerError.message("GitHub could not create the draft release")
+            }
+            status = "Uploading \(filename)…"
+            let publishedURL = try await uploadReleaseAsset(
+                staged.url,name:filename,releaseID:releaseID
+            )
+            guard publishedURL.hasPrefix(
+                "https://github.com/RBx9/RBx9.github.io/releases/download/"
+            ) else { throw ManagerError.message("Unexpected asset URL from GitHub") }
+            let size = Int64((try staged.url.resourceValues(
+                forKeys:[.fileSizeKey])).fileSize ?? 0)
+            guard size > 0 else { throw ManagerError.message("The dylib is empty") }
+            status = "Publishing binary…"
+            _ = try await api("PATCH","/repos/\(repository)/releases/\(releaseID)",
+                              body:try json(["draft":false]))
+            // Re-read the manifest immediately before the write to preserve
+            // additions from other app sessions.
+            var latest = try await readDylibCatalog()
+            guard !latest.dylibs.contains(where: {
+                $0.sha256 == digest || $0.filename.lowercased() == filename.lowercased()
+            }) else {
+                throw ManagerError.message("The dylib catalog changed; a duplicate exists.")
+            }
+            latest = DylibCatalog(schemaVersion:1,updatedAt:latest.updatedAt,
+                dylibs:latest.dylibs + [SourceDylib(
+                    id:UUID().uuidString,name:String(filename.dropLast(6)),filename:filename,
+                    downloadURL:publishedURL,sha256:digest,size:size,
+                    targetBundleID:target.isEmpty ? nil : target,
+                    createdAt:ISO8601DateFormatter().string(from:Date())
+                )])
+            try await saveDylibCatalog(latest.dylibs)
+            await refresh()
+            status = "Dylib added to RBx9 Source. Signer can sync after Pages deploys."
+        } catch {
+            status = error.localizedDescription
+            alertMessage = error.localizedDescription
+        }
+    }
+    func removeDylib(id:String) async {
+        await work("Removing dylib from source") {
+            let manifest = try await self.readDylibCatalog()
+            guard manifest.dylibs.contains(where: { $0.id == id }) else {
+                throw ManagerError.message("Dylib no longer exists.")
+            }
+            try await self.saveDylibCatalog(manifest.dylibs.filter { $0.id != id })
+        }
+    }
+
     private func work(_ activity:String,_ action:() async throws -> Void) async {
         busy = true
         status = activity + "…"
@@ -400,7 +537,8 @@ final class GitHubManager: ObservableObject {
             Task { await uploadInjectedIPA(ipa,libraries:libraries) }
         }
     }
-    private func uploadReleaseAsset(_ path:URL, name:String, releaseID:Int) async throws {
+    @discardableResult
+    private func uploadReleaseAsset(_ path:URL, name:String, releaseID:Int) async throws -> String {
         var parts = URLComponents(string:"https://uploads.github.com/repos/\(repository)/releases/\(releaseID)/assets")!
         parts.queryItems = [URLQueryItem(name:"name",value:name)]
         var request = URLRequest(url:parts.url!)
@@ -415,6 +553,11 @@ final class GitHubManager: ObservableObject {
             let msg = (try? parse(responseData)["message"] as? String) ?? String(decoding:responseData,as:UTF8.self)
             throw ManagerError.message("Upload failed (\(statusCode)): \(msg.prefix(240))")
         }
+        let asset = try parse(responseData)
+        guard let link = asset["browser_download_url"] as? String else {
+            throw ManagerError.message("GitHub did not provide an asset download URL.")
+        }
+        return link
     }
     private func uploadInjectedIPA(_ ipa:StagedSourceFile, libraries:[StagedSourceFile]) async {
         busy = true
@@ -558,6 +701,7 @@ struct PrimaryButton:View {
             TabView {
                 AppsScreen().tabItem { Label("ESign",systemImage:"square.stack.3d.up") }
                 DebsScreen().tabItem { Label("Sileo",systemImage:"shippingbox") }
+                DylibsScreen().tabItem { Label("Dylibs",systemImage:"puzzlepiece.extension") }
                 SettingsScreen().tabItem { Label("Settings",systemImage:"gearshape") }
             }
             .tint(Theme.cyan)
@@ -1113,6 +1257,109 @@ struct SettingsScreen:View {
             )) {
                 Button("OK",role:.cancel) { manager.alertMessage=nil }
             } message: { Text(manager.alertMessage ?? "") }
+        }
+    }
+}
+
+
+// MARK: - GitHub-hosted standalone dylibs for RBx9 Signer
+struct DylibsScreen: View {
+    @EnvironmentObject private var manager: GitHubManager
+    @State private var showingImporter = false
+    @State private var targetBundleID = ""
+    @State private var pendingRemoval: SourceDylib?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Header(title:"Dylib Library",subtitle:"Manage remote tweaks for RBx9 Signer")
+                    Text("Standalone dylibs are published separately from Sileo DEBs and IPAs.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    TextField("Target app bundle ID (optional)",text:$targetBundleID)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .textFieldStyle(.roundedBorder)
+                    PrimaryButton(title:"Add Dylib from Files",symbol:"plus.circle.fill") {
+                        showingImporter = true
+                    }
+                    .disabled(!manager.connected || manager.busy)
+                }
+                Section("Published Dylibs") {
+                    if manager.dylibs.isEmpty {
+                        Text("No remote dylibs yet. Upload a .dylib above.")
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(manager.dylibs) { item in
+                        HStack(spacing:12) {
+                            Image(systemName:"puzzlepiece.extension.fill")
+                                .foregroundStyle(Theme.cyan)
+                            VStack(alignment:.leading,spacing:5) {
+                                Text(item.name).font(.headline)
+                                Text(item.filename).font(.caption)
+                                    .foregroundStyle(.secondary)
+                                if let target=item.targetBundleID,!target.isEmpty {
+                                    Text("For: "+target).font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            Text(ByteCountFormatter.string(
+                                fromByteCount:item.size,countStyle:.file
+                            )).font(.caption2).foregroundStyle(.secondary)
+                        }
+                        .swipeActions(edge:.trailing,allowsFullSwipe:false) {
+                            Button(role:.destructive) { pendingRemoval=item } label: {
+                                Label("Remove",systemImage:"trash")
+                            }
+                        }
+                    }
+                }
+                Section {
+                    Text("Swipe left to remove a catalog listing. Existing downloads and GitHub release assets are retained.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .navigationTitle("Dylibs")
+            .toolbar {
+                ToolbarItem(placement:.topBarTrailing) {
+                    Button { Task { await manager.refresh() } } label: {
+                        Image(systemName:"arrow.clockwise")
+                    }
+                    .disabled(manager.busy)
+                }
+            }
+            .sheet(isPresented:$showingImporter) {
+                PackageDocumentPicker(multiple:false,onPick:{ urls in
+                    if let first=urls.first,
+                       let staged=manager.stageSelectedFile(first,expected:"dylib") {
+                        manager.publishDylib(staged,targetBundleID:targetBundleID)
+                    }
+                    showingImporter=false
+                },onCancel:{ showingImporter=false })
+            }
+            .confirmationDialog("Remove this dylib from the source?",
+                isPresented:Binding(get:{pendingRemoval != nil},
+                    set:{if !$0 {pendingRemoval=nil}})) {
+                Button("Remove listing",role:.destructive) {
+                    if let dylib=pendingRemoval {
+                        Task { await manager.removeDylib(id:dylib.id) }
+                    }
+                    pendingRemoval=nil
+                }
+                Button("Cancel",role:.cancel) { pendingRemoval=nil }
+            } message: {
+                Text("The release asset stays available. Already saved tweaks in Signer are unaffected.")
+            }
+            .alert("Source Manager",isPresented:Binding(
+                get:{manager.alertMessage != nil},
+                set:{if !$0 {manager.alertMessage=nil}}
+            )) {
+                Button("OK",role:.cancel) { manager.alertMessage=nil }
+            } message: { Text(manager.alertMessage ?? "") }
+            .safeAreaInset(edge:.bottom) { StatusPanel() }
         }
     }
 }
