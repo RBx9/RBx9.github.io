@@ -17,7 +17,7 @@
       "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-dylib-1793880912-120C9B6A\/RBx9Tok_v2.7.dylib",
       "fileName" : "RBx9Tok_v2.7.dylib",
       "id" : "rbx9tok_v2.7",
-      "name" : "RBx9Tok_v2.7",
+      "name" : "RBx9Tok_v2.7 for Tiktok",
       "sha256" : "9c5b70bac141d490279b450da2faca13d19373ab4503325237e1ece13b8868e3",
       "size" : 418448,
       "version" : "2.7"
@@ -35,5 +35,5 @@
     }
   ],
   "schemaVersion" : 1,
-  "updatedAt" : "2026-11-05T18:39:25Z"
+  "updatedAt" : "2026-11-06T05:02:42Z"
 }
