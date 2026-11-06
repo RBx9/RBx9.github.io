@@ -89,6 +89,7 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_21.py
           python3 rbx9-signer/upgrade_v1_3_22.py
           python3 rbx9-signer/upgrade_v1_3_23.py
+          python3 rbx9-signer/upgrade_v1_3_23_stages.py
           grep -F 'Label("Retry Install"' feather/Feather/Views/Library/Install/InstallPreviewView.swift
           grep -F 'Task.sleep(nanoseconds: 9_000_000_000)' feather/Feather/Views/Library/Install/InstallPreviewView.swift
           grep -F 'recoveryExpanded: $rbx9RecoveryExpanded' feather/Feather/Views/Library/LibraryView.swift
