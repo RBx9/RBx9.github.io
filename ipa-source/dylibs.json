@@ -32,8 +32,19 @@
       "sha256" : "8b11b9f7d98ae94c68bcf3dc1df0127c64cbd3ef4963b7a04df203242ccbc6c0",
       "size" : 10234840,
       "version" : "1.0.4"
+    },
+    {
+      "compatibility" : "",
+      "description" : "1.0.12",
+      "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-dylib-1794081610-5E9678C6\/XRBx9_v1.0.12.dylib",
+      "fileName" : "XRBx9_v1.0.12.dylib",
+      "id" : "xrbx9_v1.0.12",
+      "name" : "XRBx9_v1.0.12",
+      "sha256" : "eea84b7a460ba132b90e89bbfaf7b9a4732a95f62d31bf1d2aa3d9b4804d47df",
+      "size" : 10258040,
+      "version" : "1.0.12"
     }
   ],
   "schemaVersion" : 1,
-  "updatedAt" : "2026-11-07T18:53:07Z"
+  "updatedAt" : "2026-11-07T20:00:54Z"
 }
