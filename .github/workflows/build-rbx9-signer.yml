@@ -125,6 +125,7 @@ jobs:
           test -f feather/Feather/Backend/Storage/RBx9InjectLog.swift
           grep -F 'Download failed' feather/Feather/Backend/Observable/DownloadManager.swift
           grep -F 'Import failed' feather/Feather/Backend/Observable/DownloadManager.swift
+          grep -F 'createDirectoryIfNeeded(at: _fileManager.unsigned)' feather/Feather/Utilities/Handlers/AppFileHandler.swift
           grep -F 'RBx9InjectLogView()' feather/Feather/Views/Settings/SettingsView.swift
           test -f rbx9-signer/icon-original-before-dark-base64.txt
           test -f feather/Feather/Resources/Assets.xcassets/AppIcon.appiconset/rbx9.png

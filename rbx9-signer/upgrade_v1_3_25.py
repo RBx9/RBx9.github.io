@@ -63,9 +63,19 @@ once(r'''		let task = _session.downloadTask(with: url)
 
 p.write_text(s)
 
+# The import destination (Documents/Unsigned) is deleted by Reset > Delete
+# Imported Apps and only recreated at the next launch. Recreate it before the
+# move so imports never fail on a missing folder.
+fh = tree / "Feather/Utilities/Handlers/AppFileHandler.swift"
+t = fh.read_text()
+old = "\t\ttry _fileManager.moveItem(at: payloadURL, to: destinationURL)\n"
+assert t.count(old) == 1, ("v1.3.25 move", t.count(old))
+t = t.replace(old, "\t\ttry _fileManager.createDirectoryIfNeeded(at: _fileManager.unsigned)\n" + old, 1)
+fh.write_text(t)
+
 cfg = tree / "Feather.xcconfig"
 c = cfg.read_text()
 if c.count("FEATHER_PROJECT_VERSION=1.3.24") != 1:
     raise RuntimeError("v1.3.25: expected base 1.3.24")
 cfg.write_text(c.replace("FEATHER_PROJECT_VERSION=1.3.24", "FEATHER_PROJECT_VERSION=1.3.25", 1))
-print("RBx9 v1.3.25: import errors shown, download steps logged")
+print("RBx9 v1.3.25: import errors shown, download steps logged, Unsigned folder recreated")
