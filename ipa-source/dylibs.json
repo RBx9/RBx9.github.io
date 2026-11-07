@@ -24,6 +24,17 @@
     },
     {
       "compatibility" : "",
+      "description" : "New release",
+      "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-dylib-1794075240-9BDA6898\/RBx9Tok_v2.8.dylib",
+      "fileName" : "RBx9Tok_v2.8.dylib",
+      "id" : "rbx9tok_v2.8",
+      "name" : "RBx9Tok_v2.8",
+      "sha256" : "76aad0a587fe9373438876509f1ac49d1e3632dda0ca257097ab82fe4b265345",
+      "size" : 532160,
+      "version" : "2.8"
+    },
+    {
+      "compatibility" : "",
       "description" : "Twitter",
       "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-dylib-1793901030-BF74FE23\/XRBx9_v1.0.4.dylib",
       "fileName" : "XRBx9_v1.0.4.dylib",
@@ -35,5 +46,5 @@
     }
   ],
   "schemaVersion" : 1,
-  "updatedAt" : "2026-11-06T05:02:42Z"
+  "updatedAt" : "2026-11-07T18:14:07Z"
 }
