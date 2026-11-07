@@ -90,6 +90,7 @@ jobs:
           python3 rbx9-signer/upgrade_v1_3_22.py
           python3 rbx9-signer/upgrade_v1_3_23.py
           python3 rbx9-signer/upgrade_v1_3_23_stages.py
+          python3 rbx9-signer/upgrade_v1_3_24.py
           grep -F 'Label("Retry Install"' feather/Feather/Views/Library/Install/InstallPreviewView.swift
           grep -F 'Task.sleep(nanoseconds: 9_000_000_000)' feather/Feather/Views/Library/Install/InstallPreviewView.swift
           grep -F 'recoveryExpanded: $rbx9RecoveryExpanded' feather/Feather/Views/Library/LibraryView.swift
@@ -119,8 +120,9 @@ jobs:
           grep -F 'View Error Details' feather/Feather/Views/Library/Install/InstallPreviewView.swift
           grep -F 'Copy Details' feather/Feather/Views/Library/Install/InstallPreviewView.swift
           grep -F 'RBx9 Dark (Default)' feather/Feather/Views/Settings/App\ Icon/AppIconView.swift
-          grep -F 'FEATHER_PROJECT_VERSION=1.3.23' feather/Feather.xcconfig
+          grep -F 'FEATHER_PROJECT_VERSION=1.3.24' feather/Feather.xcconfig
           test -f feather/Feather/Backend/Storage/RBx9InjectLog.swift
+          grep -F 'Download failed' feather/Feather/Backend/Observable/DownloadManager.swift
           grep -F 'RBx9InjectLogView()' feather/Feather/Views/Settings/SettingsView.swift
           test -f rbx9-signer/icon-original-before-dark-base64.txt
           test -f feather/Feather/Resources/Assets.xcassets/AppIcon.appiconset/rbx9.png
@@ -196,19 +198,19 @@ jobs:
           test -f "$RUNNER_TEMP/rbx9-package/Payload/RBx9.app/Info.plist"
           (
             cd "$RUNNER_TEMP/rbx9-package"
-            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.3.23-unsigned.ipa" Payload
+            /usr/bin/zip -qry "$GITHUB_WORKSPACE/RBx9-v1.3.24-unsigned.ipa" Payload
           )
           # Guard against empty/invalid packages before uploading them.
-          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.3.23-unsigned.ipa" | tail -1
-          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.3.23-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
-          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.3.23-unsigned.ipa")" -gt 1000000
-          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.3.23-unsigned.ipa"
+          unzip -t "$GITHUB_WORKSPACE/RBx9-v1.3.24-unsigned.ipa" | tail -1
+          unzip -l "$GITHUB_WORKSPACE/RBx9-v1.3.24-unsigned.ipa" | grep 'Payload/RBx9.app/Info.plist'
+          test "$(stat -f%z "$GITHUB_WORKSPACE/RBx9-v1.3.24-unsigned.ipa")" -gt 1000000
+          ls -lh "$GITHUB_WORKSPACE/RBx9-v1.3.24-unsigned.ipa"
 
       - name: Upload actual RBx9 IPA
         uses: actions/upload-artifact@v4
         with:
-          name: RBx9-v1.3.23-iOS16plus-unsigned-IPA
-          path: RBx9-v1.3.23-unsigned.ipa
+          name: RBx9-v1.3.24-iOS16plus-unsigned-IPA
+          path: RBx9-v1.3.24-unsigned.ipa
           if-no-files-found: error
 
       - name: Upload build log if unsuccessful
