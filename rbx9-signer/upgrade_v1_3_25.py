@@ -61,6 +61,89 @@ once(r'''		let task = _session.downloadTask(with: url)
 		downloads.append(download)
 ''', "started")
 
+# --- Background session cannot create its temp file (NSURLErrorCannotCreateFile,
+# -3000): fall back to a normal session and remember it for this device.
+once(r'''	var rbx9RetryCount = 0
+''', r'''	var rbx9RetryCount = 0
+	var rbx9UsedForeground = false
+''', "foreground flag")
+
+once(r'''	private var _session: URLSession!
+''', r'''	private var _session: URLSession!
+
+	/// Used when iOS's background download service cannot create its temporary
+	/// file on this device (NSURLErrorCannotCreateFile, -3000).
+	private lazy var _rbx9FallbackSession: URLSession = {
+		let configuration = URLSessionConfiguration.default
+		configuration.waitsForConnectivity = true
+		return URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
+	}()
+
+	private static let _rbx9PreferForegroundKey = "rbx9.downloads.preferForeground"
+
+	private func _rbx9Session(foreground: Bool) -> URLSession {
+		if foreground { return _rbx9FallbackSession }
+		return _session
+	}
+''', "fallback session")
+
+once(r'''	fileprivate func _rbx9ForgetProvenance(id: String) {''', r'''	/// Task identifiers repeat across sessions, so match by object or by the
+	/// download id stored in the task description.
+	fileprivate static func _rbx9Matches(_ download: Download, _ task: URLSessionDownloadTask) -> Bool {
+		guard let existing = download.task else { return false }
+		if existing === task { return true }
+		if let a = existing.taskDescription, let b = task.taskDescription { return a == b }
+		return false
+	}
+
+	fileprivate func _rbx9ForgetProvenance(id: String) {''', "matcher")
+
+once(r'''if let existing = downloads.first(where: { $0.task?.taskIdentifier == task.taskIdentifier }) {''',
+     r'''if let existing = downloads.first(where: { Self._rbx9Matches($0, task) }) {''', "adopt match")
+once(r'''return self.downloads.first(where: { $0.task?.taskIdentifier == task.taskIdentifier })''',
+     r'''return self.downloads.first(where: { Self._rbx9Matches($0, task) })''', "resolve match")
+
+once(r'''		let task = _session.downloadTask(with: url)
+		task.taskDescription = id
+		download.task = task
+		task.resume()
+		RBx9InjectLog.add("download: started''', r'''		let rbx9Foreground = UserDefaults.standard.bool(forKey: Self._rbx9PreferForegroundKey)
+		download.rbx9UsedForeground = rbx9Foreground
+		let task = _rbx9Session(foreground: rbx9Foreground).downloadTask(with: url)
+		task.taskDescription = id
+		download.task = task
+		task.resume()
+		RBx9InjectLog.add("download: started''', "start session")
+
+once(r'''			let task = _session.downloadTask(withResumeData: resumeData)
+''', r'''			let task = _rbx9Session(foreground: download.rbx9UsedForeground).downloadTask(withResumeData: resumeData)
+''', "resume data session")
+once(r'''		} else if let url = download.task?.originalRequest?.url {
+			let task = _session.downloadTask(with: url)
+''', r'''		} else if let url = download.task?.originalRequest?.url {
+			let task = _rbx9Session(foreground: download.rbx9UsedForeground).downloadTask(with: url)
+''', "resume url session")
+
+once(r'''		let nsError = error as NSError
+''', r'''		let nsError = error as NSError
+
+		if nsError.code == NSURLErrorCannotCreateFile, !download.rbx9UsedForeground {
+			RBx9InjectLog.add("download: background session cannot create its temp file (-3000); retrying with a normal session")
+			UserDefaults.standard.set(true, forKey: Self._rbx9PreferForegroundKey)
+			download.rbx9UsedForeground = true
+			let retryURL = download.url
+			DispatchQueue.main.async {
+				download.resumeData = nil
+				download.rbx9RetryCount = 0
+				let task = self._rbx9FallbackSession.downloadTask(with: retryURL)
+				task.taskDescription = download.id
+				download.task = task
+				task.resume()
+			}
+			return
+		}
+''', "fallback on -3000")
+
 p.write_text(s)
 
 # The import destination (Documents/Unsigned) is deleted by Reset > Delete
