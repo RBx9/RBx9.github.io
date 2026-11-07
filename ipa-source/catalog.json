@@ -332,5 +332,24 @@
         "version": "4.6"
       }
     ]
+  },
+  "com.zhiliaoapp.musically": {
+    "name": "TikTok",
+    "developerName": "RBx9",
+    "subtitle": "Download and sideload this iOS app",
+    "localizedDescription": "Available in the RBx9 IPA Library.",
+    "iconURL": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/4b/af/40/4baf40d2-5fec-a1fe-da33-cafd0c87f18b/TikTok_AppIcon26-0-0-1x_U007epad-0-1-0-85-220.png/512x512bb.jpg",
+    "category": "utilities",
+    "versions": [
+      {
+        "version": "47.5.0",
+        "buildVersion": "475038",
+        "date": "2026-11-07T20:54:37Z",
+        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/source-manager-1794084372-03AE7B5E/TikTok-47.5.0.ipa",
+        "size": 487400659,
+        "minOSVersion": "10.0",
+        "localizedDescription": "Uploaded using RBx9 Source Manager"
+      }
+    ]
   }
 }
