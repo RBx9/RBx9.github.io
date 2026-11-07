@@ -120,6 +120,15 @@
     "tintColor": "#2DE2CF",
     "versions": [
       {
+        "version": "1.3.23",
+        "buildVersion": "1",
+        "date": "2026-11-07T18:06:38Z",
+        "downloadURL": "https://github.com/RBx9/RBx9.github.io/releases/download/rbx9-signer-v1.3.23/RBx9-v1.3.23-unsigned.ipa",
+        "size": 17311993,
+        "minOSVersion": "16.0",
+        "localizedDescription": "RBx9 v1.3.23: Injection Log (Settings > Features) that records each signing step and memory use so crashes can be traced, plus the 1.3.22 injection hardening (safer dylib validation and arm64e fix-up). Unsigned IPA for iOS 16+; sign with your own certificate. Feather GPL-3.0 source: https://github.com/RBx9/RBx9.github.io/tree/fix/rbx9-signer-installer-diagnostics-private-1-3-19"
+      },
+      {
         "version": "1.3.21",
         "buildVersion": "1",
         "date": "2026-11-05T19:02:06Z",
