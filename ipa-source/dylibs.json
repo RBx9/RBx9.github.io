@@ -24,6 +24,17 @@
     },
     {
       "compatibility" : "",
+      "description" : "1.0",
+      "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-dylib-1794325596-48496EFA\/Stable-LinesExtractor2.dylib",
+      "fileName" : "Stable-LinesExtractor2.dylib",
+      "id" : "stable-linesextractor2",
+      "name" : "Stable LinesExtractor2",
+      "sha256" : "bb44bd5f0c8f7741fadc6866a29f259f6b48c590b49dae5767b492561b9064f5",
+      "size" : 188723,
+      "version" : "1.0"
+    },
+    {
+      "compatibility" : "",
       "description" : "1.0.12",
       "downloadURL" : "https:\/\/github.com\/RBx9\/RBx9.github.io\/releases\/download\/rbx9-dylib-1794081610-5E9678C6\/XRBx9_v1.0.12.dylib",
       "fileName" : "XRBx9_v1.0.12.dylib",
@@ -35,5 +46,5 @@
     }
   ],
   "schemaVersion" : 1,
-  "updatedAt" : "2026-11-07T20:02:06Z"
+  "updatedAt" : "2026-11-10T15:46:49Z"
 }
